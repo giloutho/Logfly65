@@ -6,7 +6,7 @@ Number 65 for version 6.5. Evolution of version 6 to bring Logfly into complianc
 * disable the Node.js integration in all renderers that display remote content
 * enable context isolation in all renderers
 
-**This is not a functional program**, just a test.
+**This is not a functional program**, just a test. For now, continue to use version 6.
 
 ## Structure Project
 
