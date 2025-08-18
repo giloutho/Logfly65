@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Logfly 6.5.0</title>
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="./styles/custom.css">
+</head>
+<body class="d-flex flex-column vh-100">
+
+  <!-- Container SPA -->
+  <div id="app" class="d-flex flex-column flex-grow-1"></div>
+
+  <!-- Composants -->
+  <script type="module" src="./components/app-menu.js"></script>
+  <script type="module" src="./components/app-body.js"></script>
+  <script type="module" src="./components/app-footer.js"></script>
+
+  <!-- Bootstrap Bundle JS (inclut Popper) -->
+  <script src="../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- SPA logic -->
+  <script type="module" src="./renderer.js"></script>
+</body>
+</html>
