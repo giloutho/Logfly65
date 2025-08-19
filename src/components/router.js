@@ -3,6 +3,10 @@ export const routes = {
     module: () => import("./pages/home-page.js"),
     tag: "home-page",
   },
+  import: {
+    module: () => import("./pages/import-page.js"),
+    tag: "import-page",
+  },
   about: {
     module: () => import("./pages/about-page.js"),
     tag: "about-page",
