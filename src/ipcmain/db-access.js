@@ -9,16 +9,20 @@ const { DatabaseSync } = require('node:sqlite');
 let db = null;
 
 ipcMain.handle('db:open', async (event, args) => {
-    let dbPath = args.filePath;
-    if (app.isPackaged) {
-        log.initialize();
-        // pour savoir où se trouve le fichier de log
-        log.info('Log file path:', log.transports.file.getFile().path);        
-        //dbPath = app.getPath('userData') + '/test.db';
-        dbPath = app.getPath('documents') + '/Logfly/test.db';
-       // dbPath = path.join(app.getPath('documents'), 'Logfly', 'test.db');
-
-        log.info('=== FOR PRODUCTION DEBUG DB OPEN ===');
+    const dbPath = path.join(app.getPath('userData'),args.dbname);
+    if (!fs.existsSync(dbPath)) {
+        return { success: false, message: 'Database file does not exist' };
+    }
+    try {
+        db = new DatabaseSync(dbPath);
+        const stmtVol = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+        const resVol = stmtVol.get('Vol')
+        if (resVol != undefined && resVol != null && resVol['name'] == 'Vol') {
+            return { success: true, message: 'Database opened successfully' };
+        } 
+        return { success: false, message: 'Database is not valid' };
+    } catch (error) {
+        const errMsg = 'Error opening at '+dbPath+' : '+error.message
         log.info('Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);
         log.info('app.getPath(\'userData\' : '+app.getPath('userData'));
         log.info('Chemin reçu:', dbPath);
@@ -29,36 +33,7 @@ ipcMain.handle('db:open', async (event, args) => {
             log.info('Droits:', stats.mode);
         } else {
             log.error('ERREUR: Le fichier n\'existe pas !');
-        }               
-    } else {
-        dbPath = path.join(app.getPath('documents'), 'Logfly', 'test.db');
-    }
-
-    if (!fs.existsSync(dbPath)) {
-        return { success: false, message: 'Database file does not exist' };
-    }    
-    try {
-        log.info('About to create DatabaseSync instance...');
-        db = new DatabaseSync(dbPath);
-        log.info('DatabaseSync instance created successfully');
-        log.info('Testing database connection...');
-        const stmtVol = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
-        log.info('Prepare statement successful');
-        const resVol = stmtVol.get('Vol')
-        log.info('Query executed successfully:', resVol);
-        if (resVol != undefined && resVol != null && resVol['name'] == 'Vol') {
-            return { success: true, message: 'Database opened successfully' };
-        } 
-        return { success: false, message: 'Database is not valid' };
-    } catch (error) {
-        const errMsg = 'Error opening at '+dbPath+' : '+error.message
-        log.error(errMsg);
-        log.error('Detailed error info:');
-        log.error('Error name:', error.name);
-        log.error('Error message:', error.message);
-        log.error('Error stack:', error.stack);
-        log.error('Error code:', error.code);
-        log.error('Error errno:', error.errno);        
+        }                      
         db = null;
         return { success: false, message: errMsg };
     }
