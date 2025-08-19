@@ -12,6 +12,7 @@ if (process.env.NODE_ENV !== "production") {
 
 const { app, BrowserWindow } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -21,8 +22,12 @@ if (require('electron-squirrel-startup')) {
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    // Résolutions écran les plus courantes
+    // Écran ordinateur de bureau ou portable / 16:9 (HD 900) / 1600 × 900 px
+    // Écran ordinateur de bureau ou portable / 16:9 (HD 768) / 1366 × 768 px
+    // Écran ordinateur de bureau / 5:4 (SXGA) / 1280 × 1024 px
+    width: 1366,
+    height: 768,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -64,14 +69,12 @@ app.on('window-all-closed', () => {
 
 // Require each JS file in the ipcmain folder
 function loadMainProcesses () {
-  const ipcMainContext = require.context(
-    './ipcmain',   // Chemin relatif au fichier actuel
-    true,             // Inclure les sous-dossiers
-    /\.js$/           // Filtre pour les fichiers .js
-  );
+  const ipcMainPath = path.join(__dirname, 'ipcmain');
 
-  ipcMainContext.keys().forEach(modulePath => {
-    // Charge le module
-    const module = ipcMainContext(modulePath);
+  fs.readdirSync(ipcMainPath).forEach(file => {
+    if (file.endsWith('.js')) {
+      const modulePath = path.join(ipcMainPath, file);
+      require(modulePath); // Charge le module
+    }
   });
 }
