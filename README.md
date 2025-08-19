@@ -1,6 +1,6 @@
 ## Logfly65
 
-Number 65 for version 6.5. Evolution of version 6 to bring Logfly into compliance with the latest Electron standards:
+Number 65 for version 6.5 of Logfly. Evolution of version 6 to bring Logfly into compliance with the latest Electron standards:
 
 * only load secure content
 * disable the Node.js integration in all renderers that display remote content
@@ -12,4 +12,4 @@ Number 65 for version 6.5. Evolution of version 6 to bring Logfly into complianc
 
 A Single Page Application developed with web components without any framework.
 
-The project architecture was initialized using [ElectronForge](https://www.electronforge.io/) without the base template.
+The project architecture was initialized using [ElectronForge](https://www.electronforge.io/) without using a bundler like webpack.
