@@ -10,9 +10,12 @@ if (process.env.NODE_ENV !== "production") {
   }
 }
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const log = require('electron-log/main');
+
+let langjson
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -39,6 +42,7 @@ const createWindow = () => {
   console.log('Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);
 
   loadMainProcesses()
+  loadLanguage();
   // Open the DevTools.
  // mainWindow.webContents.openDevTools();
 };
@@ -65,6 +69,31 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+function loadLanguage() {
+  let currLangFile = '../lang/'
+  //let currLang = store.get('lang')
+  let currLang = 'fr'
+  if (currLang == undefined || currLang == null || currLang == '') {
+    currLang = 'en'
+  } 
+  try {    
+    if (currLang != undefined && currLang != 'en') {
+      currLangFile += currLang+'.json'
+      currLangFile = path.join(__dirname, 'lang', currLang + '.json');
+      let content = fs.readFileSync(currLangFile);
+      langjson = JSON.parse(content);
+    } else {
+      langjson = {}
+    }
+  } catch (error) {
+    log.error('[main.js] Error while loading : '+currLangFile+' error :'+error)
+  }  
+}
+
+ipcMain.handle('lang:msg', async (event, args) => {
+  return langjson
 });
 
 // Require each JS file in the ipcmain folder

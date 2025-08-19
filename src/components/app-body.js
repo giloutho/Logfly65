@@ -5,16 +5,27 @@ export class AppBody extends HTMLElement {
     return ["route"];
   }
 
-  connectedCallback() {
-    this.render();
+  constructor() {
+    super();
+    console.log('AppBody instancié');
   }
 
-  attributeChangedCallback() {
-    this.render();
+  connectedCallback() {
+    // Ne rien faire ici, le rendu sera déclenché par attributeChangedCallback
+  }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (typeof oldValue === 'undefined' || oldValue === newValue) {
+        console.log('AppBody attributeChangedCallback ignoré (valeur identique ou oldValue non défini)');
+        return;
+      }
+      console.log('AppBody attributeChangedCallback appelé');
+      this.render();
   }
 
   async render() {
     const route = this.getAttribute("route") || "home";
+    console.log('AppBody render appelé pour la route :', route);
 
     this.innerHTML = `<div class="p-3 text-muted">Chargement...</div>`;
 

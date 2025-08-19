@@ -2,6 +2,12 @@ const app = document.getElementById("app");
 
 function renderRoute() {
   const hash = window.location.hash || "#home";
+  if (window._lastRoute === hash) {
+    console.log('renderRoute ignoré, route déjà affichée :', hash);
+    return;
+  }
+  window._lastRoute = hash;
+  console.log('renderRoute appelé pour :', hash);
   app.innerHTML = "";
 
   app.appendChild(document.createElement("app-menu"));

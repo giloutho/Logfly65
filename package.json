@@ -23,6 +23,7 @@
     "electron-log": "^5.4.3",
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^10.1.0",
+    "gettext.js": "^2.0.3",
     "serialport": "^13.0.0"
   },
   "devDependencies": {
