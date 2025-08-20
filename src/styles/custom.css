@@ -1,3 +1,26 @@
+html, body {
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+table {
+  width: 100%;
+  table-layout: auto;
+}
+
+* {
+  outline: 1px solid red;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;  
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+
 .app-footer {
     position: fixed;
     bottom: 0;

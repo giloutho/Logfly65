@@ -12,6 +12,9 @@ const filesToCopy = [
   { src: "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js", dest: "bootstrap.bundle.min.js" },
   { src: "node_modules/bootstrap/dist/css/bootstrap.min.css", dest: "bootstrap.min.css" },
 
+  // Bootstrap Icons
+  { src: "node_modules/bootstrap-icons/font/bootstrap-icons.css", dest: "bootstrap-icons.css" },
+
   // DataTables core (distribution prête à l'emploi)
   { src: "node_modules/datatables.net/js/dataTables.min.js", dest: "dataTables.min.js" },
   { src: "node_modules/datatables.net-select/js/dataTables.select.min.js", dest: "dataTables.select.min.js" },
@@ -23,6 +26,10 @@ const filesToCopy = [
   // DataTables Select Plugin
   { src: "node_modules/datatables.net-select-bs5/js/select.bootstrap5.min.js", dest: "select.bootstrap5.min.js" },
   { src: "node_modules/datatables.net-select-bs5/css/select.bootstrap5.min.css", dest: "select.bootstrap5.min.css" },
+
+  // Leaflet
+  { src: "node_modules/leaflet/dist/leaflet.js", dest: "leaflet.js" },
+  { src: "node_modules/leaflet/dist/leaflet.css", dest: "leaflet.css" },
 ];
 
 function ensureDirExists(filePath) {

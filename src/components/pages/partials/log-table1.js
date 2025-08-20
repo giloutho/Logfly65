@@ -20,6 +20,40 @@ export class LogTable extends HTMLElement {
 
   render() {
     this.innerHTML = /*html */`
+
+<!-- Barre d'actions contextuelle -->
+<div id="flight-actions" class="p-2 bg-light border-bottom">
+  <div class="d-flex align-items-center">
+    <span class="me-3 fw-bold">Actions pour le vol sélectionné :</span>
+
+              <!-- Actions fréquentes -->
+              <button class="btn btn-sm btn-primary me-2">
+                <i class="bi bi-geo-alt"></i> Voir carte
+              </button>
+              <button class="btn btn-sm btn-success me-2">
+                <i class="bi bi-bar-chart"></i> Analyse
+              </button>
+              <button class="btn btn-sm btn-warning me-2">
+                <i class="bi bi-download"></i> Exporter
+              </button>
+
+              <!-- Menu déroulant pour actions secondaires -->
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                        type="button" data-bs-toggle="dropdown">
+                  Plus
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#">Action 4</a></li>
+                  <li><a class="dropdown-item" href="#">Action 5</a></li>
+                  <li><a class="dropdown-item" href="#">Action 6</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="#">Action 12</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <table id="table_id" class="table table-striped table-bordered">
               <tbody>
               </tbody>
