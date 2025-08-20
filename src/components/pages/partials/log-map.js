@@ -71,7 +71,7 @@ export class LogMap extends HTMLElement {
             </style>           
             <div id="map-pm">
                 <img id="left-arrow" class="map-arrow-overlay" src="./static/images/left-arrow.png" alt="arrow left" />  
-                <img id="right-arrow" class="map-arrow-overlay-right" src="../main_window/static/images/right-arrow.png" alt="arrow right" />  
+                <img id="right-arrow" class="map-arrow-overlay-right" src="./static/images/right-arrow.png" alt="arrow right" />  
                 <div id="map-overlay-label" class="map-overlay-label"></div>
             </div>   
         `;
