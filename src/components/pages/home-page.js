@@ -14,7 +14,6 @@ export class HomePage extends HTMLElement {
                         <log-details></log-details>
                     </div>
                     </div>
-
                 </div>
 
         `;
