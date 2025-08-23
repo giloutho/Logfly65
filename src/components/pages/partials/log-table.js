@@ -1,11 +1,22 @@
 // components/app-table.js
 export class LogTable extends HTMLElement {
+  setTableLines(lines) {
+    if (lines === 'reset') {
+      this.tableLines = this.initialTableLines || 8;
+    } else {
+      this.tableLines = lines;
+    }
+    if (this.dataTableInstance) {
+      this.dataTableInstance.page.len(this.tableLines).draw();
+    }
+  }
   constructor() {
     super();
-    this.dataTableInstance = null;
-    this.i18n = {}; // Pour stocker les messages
-    this.langLoaded = false;
-    this.tableLines = 8; // Nombre de lignes par page
+  this.dataTableInstance = null;
+  this.i18n = {}; // Pour stocker les messages
+  this.langLoaded = false;
+  this.initialTableLines = 8; // Mémorise le nombre de lignes initial
+  this.tableLines = this.initialTableLines; // Nombre de lignes par page
   }
 
   async connectedCallback() {

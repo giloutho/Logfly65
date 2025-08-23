@@ -25,6 +25,27 @@ export class AppMenu extends HTMLElement {
         document.exitFullscreen();
       }
     });
+
+    // Ajuste dynamiquement le nombre de lignes de log-table en plein écran
+    document.addEventListener('fullscreenchange', () => {
+      const logTable = document.querySelector('log-table');
+      if (logTable) {
+        if (document.fullscreenElement) {
+          // Plein écran
+          const availableHeight = window.innerHeight;
+          // A  priori le calcul laisse de la marge
+          // Estimation : chaque ligne ~40px, on laisse 200px pour le reste
+          // On rajoute des lignes supplémentaires pour le plein écran
+          // à vérifier sur d'autres appareils
+          const addLines = 4
+          const lines = Math.max(5, Math.floor((availableHeight - 200) / 40) + addLines);
+          logTable.setTableLines(lines);
+        } else {
+          // Retour à la fenêtre normale
+          logTable.setTableLines('reset');
+        }
+      }
+    });
   }
 }
 
