@@ -4,6 +4,7 @@ class LogDetails extends HTMLElement {
     super();
     this.i18n = {}; // Pour stocker les messages
     this.langLoaded = false;
+    this.dbId = null;
   }    
 
   async connectedCallback() {
@@ -113,9 +114,9 @@ class LogDetails extends HTMLElement {
           
           <!-- Onglet Commentaire -->
           <div class="tab-pane fade" id="comment" role="tabpanel">
-            <textarea class="form-control mb-2" rows="4" placeholder="Saisir un commentaire..."></textarea>
+            <textarea class="form-control mb-2" rows="4" id="comment-input" placeholder="Saisir un commentaire..."></textarea>
             <button class="btn btn-sm btn-secondary me-2">Annuler</button>
-            <button class="btn btn-sm btn-primary">Valider</button>
+            <button class="btn btn-sm btn-primary" id="comment-submit-btn">Valider</button>
           </div>
           
           <!-- Onglet Modification -->
@@ -159,7 +160,7 @@ class LogDetails extends HTMLElement {
     setupEventListeners() {
         document.querySelector('log-table').addEventListener('row-selected', (event) => {
             const rowData = event.detail.rowData;
-            this.selectedRowData = rowData;
+            this.dbId = rowData.V_ID;
             this.rowIndex = event.detail.rowIndex;    
             const dbFlight = event.detail.dbFlight;
             console.log(rowData.V_Site+' '+rowData.V_Engin+' '+rowData.Day + ' ' + rowData.Hour);
@@ -170,16 +171,32 @@ class LogDetails extends HTMLElement {
                 console.log("Commentaire présent "+rowData.V_Commentaire);
             } 
         });
+
+        // Ajout listener pour le bouton de validation du commentaire
+        const commentSubmitBtn = this.querySelector('#comment-submit-btn');
+        if (commentSubmitBtn) {
+        commentSubmitBtn.addEventListener('click', () => this.updateComment());
+        }
     }  
 
     updateDetails(rowData, dbFlight) {
-        console.log(dbFlight.V_Track)
+        console.log(dbFlight)
         // Met à jour les détails affichés dans le composant en fonction de rowData
         if (!rowData) return;
         this.querySelector('#site').textContent = rowData.V_Site || 'N/A';
         this.querySelector('#glider').textContent = rowData.V_Engin || 'N/A';
         this.querySelector('#pilot-label').textContent = this.gettext('Pilot')
-        this.querySelector('#pilot-value').textContent = dbFlight.V_Track.info.pilot || 'N/A';
+        if (dbFlight.V_Track != null) {
+            this.querySelector('#pilot-value').textContent = dbFlight.V_Track.info.pilot || 'N/A';
+            this.querySelector('#alt-value').textContent = dbFlight.V_Track.stat.maxalt.gps+'m' || 'N/A';
+            this.querySelector('#vario-value').textContent = dbFlight.V_Track.stat.maxclimb+'m/s' || 'N/A';
+            this.querySelector('#mini-value').textContent = dbFlight.V_Track.stat.maxsink+'m/s' || 'N/A';
+        } else {
+            this.querySelector('#pilot-value').textContent = '';
+            this.querySelector('#alt-value').textContent = '';
+            this.querySelector('#vario-value').textContent = '';
+            this.querySelector('#mini-value').textContent = '';
+        }
         this.querySelector('#takeoff-label').innerHTML = this.gettext('Take off') + ' :';
         this.querySelector('#takeoff-hour').textContent = rowData.Hour || 'N/A';
         this.querySelector('#landing-label').innerHTML = this.gettext('Landing') + ' :';
@@ -187,12 +204,39 @@ class LogDetails extends HTMLElement {
         this.querySelector('#duration-label').innerHTML = this.gettext('Duration') + ' :';
         this.querySelector('#duration-value').textContent = rowData.Duree || 'N/A';
         this.querySelector('#alt-label').innerHTML = this.gettext('Max GPS alt') + ' :';
-        this.querySelector('#alt-value').textContent = dbFlight.V_Track.stat.maxalt.gps+'m' || 'N/A';
         this.querySelector('#vario-label').innerHTML = this.gettext('Max climb') + ' :';
-        this.querySelector('#vario-value').textContent = dbFlight.V_Track.stat.maxclimb+'m/s' || 'N/A';
         this.querySelector('#mini-label').innerHTML = this.gettext('Max sink') + ' :';
-        this.querySelector('#mini-value').textContent = dbFlight.V_Track.stat.maxsink+'m/s' || 'N/A';
+        if (rowData.V_Commentaire && rowData.V_Commentaire.trim() !== '') {
+            const commentInput = this.querySelector('#comment-input');
+                if (commentInput) {
+                    commentInput.value = rowData.V_Commentaire || '';
+                }
+                // Affiche l'onglet Commentaire par défaut
+                const commentTab = this.querySelector('#comment-tab');
+                if (commentTab) {
+                    commentTab.click();
+                }  
+        } else {
+            const generalTab = this.querySelector('#general-tab');
+            if (generalTab) {
+                generalTab.click();
+            }  
+        }       
     }   
+
+    updateComment() {
+        const newComment = this.querySelector('#comment-input').value;
+        if (this.dbId != null) {
+            this.dispatchEvent(new CustomEvent('com-updated', {
+                detail: {
+                    V_ID: this.rowData.V_ID,
+                    V_Commentaire: newComment
+                },
+                bubbles: true,
+                composed: true
+            }));       
+        } 
+    }    
 
     async langRequest() {
         this.i18n = await window.electronAPI.langmsg();
