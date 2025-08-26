@@ -5,6 +5,8 @@ class LogDetails extends HTMLElement {
     this.i18n = {}; // Pour stocker les messages
     this.langLoaded = false;
     this.dbId = null;
+    this.rowData = null;
+    this.rowIndex = null;
   }    
 
   async connectedCallback() {
@@ -114,10 +116,16 @@ class LogDetails extends HTMLElement {
           
           <!-- Onglet Commentaire -->
           <div class="tab-pane fade" id="comment" role="tabpanel">
-            <textarea class="form-control mb-2" rows="4" id="comment-input" placeholder="Saisir un commentaire..."></textarea>
-            <button class="btn btn-sm btn-secondary me-2">Annuler</button>
+            <textarea class="form-control mb-2 comment-placeholder" rows="4" id="comment-input" placeholder="Commentaire du vol #ID"></textarea>
+            <button class="btn btn-sm btn-secondary me-2" id="comment-delete-btn">Annuler</button>
             <button class="btn btn-sm btn-primary" id="comment-submit-btn">Valider</button>
           </div>
+      <style>
+        .comment-placeholder::placeholder {
+          font-style: italic;
+          font-size: 0.75em;
+        }
+      </style>
           
           <!-- Onglet Modification -->
           <div class="tab-pane fade" id="modify" role="tabpanel">
@@ -159,35 +167,35 @@ class LogDetails extends HTMLElement {
 
     setupEventListeners() {
         document.querySelector('log-table').addEventListener('row-selected', (event) => {
-            const rowData = event.detail.rowData;
-            this.dbId = rowData.V_ID;
+            this.rowData = event.detail.rowData;
+            this.dbId = this.rowData.V_ID;
             this.rowIndex = event.detail.rowIndex;    
             const dbFlight = event.detail.dbFlight;
-            console.log(rowData.V_Site+' '+rowData.V_Engin+' '+rowData.Day + ' ' + rowData.Hour);
-            this.updateDetails(rowData, dbFlight);
-            // Changement d'aspect de l'icône commentaire
-            const commentImg = this.querySelector('#bt-comment img');
-            if (rowData.V_Commentaire && rowData.V_Commentaire.trim() !== '') {
-                console.log("Commentaire présent "+rowData.V_Commentaire);
-            } 
+            console.log(this.rowData.V_Site+' '+this.rowData.V_Engin+' '+this.rowData.Day + ' ' + this.rowData.Hour);
+            this.updateDetails(dbFlight);
         });
 
         // Ajout listener pour le bouton de validation du commentaire
         const commentSubmitBtn = this.querySelector('#comment-submit-btn');
         if (commentSubmitBtn) {
-        commentSubmitBtn.addEventListener('click', () => this.updateComment());
+          commentSubmitBtn.addEventListener('click', () => this.updateComment());
         }
-    }  
 
-    updateDetails(rowData, dbFlight) {
-        console.log(dbFlight)
+        const commentDeleteBtn = this.querySelector('#comment-delete-btn');
+        if (commentDeleteBtn) {
+          commentDeleteBtn.addEventListener('click', () => this.deleteComment());
+        }
+    }
+
+    updateDetails(dbFlight) {
         // Met à jour les détails affichés dans le composant en fonction de rowData
-        if (!rowData) return;
-        this.querySelector('#site').textContent = rowData.V_Site || 'N/A';
-        this.querySelector('#glider').textContent = rowData.V_Engin || 'N/A';
+        if (!this.rowData) return;
+        this.querySelector('#site').textContent = this.rowData.V_Site || 'N/A';
+        this.querySelector('#glider').textContent = this.rowData.V_Engin || 'N/A';
         this.querySelector('#pilot-label').textContent = this.gettext('Pilot')
         if (dbFlight.V_Track != null) {
             this.querySelector('#pilot-value').textContent = dbFlight.V_Track.info.pilot || 'N/A';
+            console.log('Alt max Gps'+dbFlight.V_Track.stat.maxalt.gps+'m')
             this.querySelector('#alt-value').textContent = dbFlight.V_Track.stat.maxalt.gps+'m' || 'N/A';
             this.querySelector('#vario-value').textContent = dbFlight.V_Track.stat.maxclimb+'m/s' || 'N/A';
             this.querySelector('#mini-value').textContent = dbFlight.V_Track.stat.maxsink+'m/s' || 'N/A';
@@ -198,37 +206,54 @@ class LogDetails extends HTMLElement {
             this.querySelector('#mini-value').textContent = '';
         }
         this.querySelector('#takeoff-label').innerHTML = this.gettext('Take off') + ' :';
-        this.querySelector('#takeoff-hour').textContent = rowData.Hour || 'N/A';
+        this.querySelector('#takeoff-hour').textContent = this.rowData.Hour || 'N/A';
         this.querySelector('#landing-label').innerHTML = this.gettext('Landing') + ' :';
-        this.querySelector('#landing-hour').textContent = rowData.Hour || 'N/A';
+        this.querySelector('#landing-hour').textContent = this.rowData.Hour || 'N/A';
         this.querySelector('#duration-label').innerHTML = this.gettext('Duration') + ' :';
-        this.querySelector('#duration-value').textContent = rowData.Duree || 'N/A';
+        this.querySelector('#duration-value').textContent = this.rowData.Duree || 'N/A';
         this.querySelector('#alt-label').innerHTML = this.gettext('Max GPS alt') + ' :';
         this.querySelector('#vario-label').innerHTML = this.gettext('Max climb') + ' :';
         this.querySelector('#mini-label').innerHTML = this.gettext('Max sink') + ' :';
-        if (rowData.V_Commentaire && rowData.V_Commentaire.trim() !== '') {
-            const commentInput = this.querySelector('#comment-input');
-                if (commentInput) {
-                    commentInput.value = rowData.V_Commentaire || '';
-                }
-                // Affiche l'onglet Commentaire par défaut
-                const commentTab = this.querySelector('#comment-tab');
-                if (commentTab) {
-                    commentTab.click();
-                }  
+        this.querySelector('#comment-delete-btn').innerHTML = this.gettext('Delete');
+        const commentInput = this.querySelector('#comment-input');
+        if (commentInput) {
+          // Met à jour le placeholder dynamiquement
+          commentInput.placeholder = this.gettext('Enter or edit the comment, then confirm...');
+        }
+        if (this.rowData.V_Commentaire && this.rowData.V_Commentaire.trim() !== '') {
+          if (commentInput) {
+            commentInput.value = this.rowData.V_Commentaire || '';
+          }
+          // Affiche l'onglet Commentaire par défaut
+          const commentTab = this.querySelector('#comment-tab');
+          if (commentTab) {
+            commentTab.click();
+          }
         } else {
-            const generalTab = this.querySelector('#general-tab');
-            if (generalTab) {
-                generalTab.click();
-            }  
-        }       
+          if (commentInput) {
+            commentInput.value = '';
+          }
+          const generalTab = this.querySelector('#general-tab');
+          if (generalTab) {
+            generalTab.click();
+          }
+        }
     }   
+
+    deleteComment() {
+        const commentInput = this.querySelector('#comment-input');
+        if (commentInput) {
+          commentInput.value = '';
+        }
+        this.updateComment()
+    } 
 
     updateComment() {
         const newComment = this.querySelector('#comment-input').value;
         if (this.dbId != null) {
             this.dispatchEvent(new CustomEvent('com-updated', {
                 detail: {
+                    rowIndex: this.rowIndex,
                     V_ID: this.rowData.V_ID,
                     V_Commentaire: newComment
                 },

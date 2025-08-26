@@ -35,6 +35,13 @@ export class LogTable extends HTMLElement {
               <tbody>
               </tbody>
           </table>
+          <div id="msg-toast" class="toast align-items-center text-bg-success border-0 position-fixed bottom-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="2000">
+            <div class="d-flex">
+              <div class="toast-body" id="toast-txt">
+                toast message
+              </div>
+            </div>
+          </div>          
           <div class="modal fade" id="winModal" tabindex="-1" aria-labelledby="winModalLabel" aria-hidden="true">
               <div class="modal-dialog">
                   <div class="modal-content">
@@ -56,11 +63,11 @@ export class LogTable extends HTMLElement {
   }
 
   setupEventListeners() {
-      // document.addEventListener('com-updated', this.handleComUpdated);        
+    document.addEventListener('com-updated', this.handleComUpdated);        
       // document.addEventListener('glider-updated', this.handleGliderUpdated);   
       // document.addEventListener('site-updated', this.handleSiteUpdated); 
-      document.addEventListener('select-next-row', this.handleSelectNextRow);      
-      document.addEventListener('select-prev-row', this.handleSelectPrevRow);        
+    document.addEventListener('select-next-row', this.handleSelectNextRow);      
+    document.addEventListener('select-prev-row', this.handleSelectPrevRow);        
   }
 
   async dbOpen() {
@@ -199,6 +206,7 @@ export class LogTable extends HTMLElement {
         const rowData = dt.row(indexes).data();
         const rowIndex = indexes;
         const dbFlight = await this.readIgc(rowData.V_ID, rowData.V_Engin);
+        console.log('Alt max Gps'+dbFlight.V_Track.stat.maxalt.gps+'m')
         this.dispatchEvent(new CustomEvent('row-selected', {
           detail: { rowIndex, rowData, dbFlight },
           bubbles: true,
@@ -343,6 +351,55 @@ export class LogTable extends HTMLElement {
           }
       }   
   }  
+
+    handleComUpdated = async (event) => {
+        const { rowIndex,V_ID, V_Commentaire } = event.detail;
+        console.log('row-updated : ' + V_ID + ' ' + V_Commentaire);
+        // Met à jour la base de données via IPC
+        const params = {
+            invoketype: 'db:update',
+            args: {
+                sqltable: 'Vol',
+                sqlparams: {
+                    V_Commentaire: V_Commentaire
+                },
+                sqlwhere: {
+                    V_ID: V_ID
+                }
+            }
+        };
+        const result = await window.electronAPI.invoke(params);
+    if (result.success) {
+      // Met à jour la ligne concernée dans la DataTable avec rowIndex fourni
+      if (this.dataTableInstance && typeof rowIndex !== 'undefined') {
+        const rowData = this.dataTableInstance.row(rowIndex).data();
+        rowData.V_Commentaire = V_Commentaire;
+        const node = this.dataTableInstance.row(rowIndex).node();
+        if (node) {
+          if (V_Commentaire && V_Commentaire !== '') {
+            console.log('add table-warning');
+            node.classList.add('table-warning');
+          } else {
+            console.log('remove table-warning');
+            node.classList.remove('table-warning');
+          }
+        }
+        this.dataTableInstance.row(rowIndex).data(rowData).draw(false);
+      }
+      // Affiche le toast
+      const toastEl = document.getElementById('msg-toast');
+      if (toastEl) {
+        const toastBody = toastEl.querySelector('#toast-txt');
+        if (toastBody) {
+        toastBody.textContent = this.gettext('Saved changes');
+        }
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+      }
+    } else {
+      console.error('Erreur lors de la mise à jour :', result.message);
+    }
+    }      
   
   displayModal(title, body) {
       const modal = this.querySelector('#winModal');
