@@ -1,3 +1,6 @@
+import "./log-gliders.js"
+import "./log-sites.js"
+
 class LogDetails extends HTMLElement {
 
   constructor() {
@@ -43,7 +46,9 @@ class LogDetails extends HTMLElement {
         color: #0a58ca;
         background-color: #e9ecef;
         }        
-      </style>      
+      </style>   
+      <log-gliders></log-gliders> 
+      <log-sites></log-sites>  
       <div class="card h-100">
         <div class="card-header">
           <ul class="nav nav-tabs card-header-tabs" id="flightTabs" role="tablist">
@@ -129,11 +134,11 @@ class LogDetails extends HTMLElement {
           
           <!-- Onglet Modification -->
           <div class="tab-pane fade" id="modify" role="tabpanel">
-            <button class="btn btn-sm btn-outline-primary me-2">Changer voile</button>
-            <button class="btn btn-sm btn-outline-primary me-2">Changer site</button>
-            <button class="btn btn-sm btn-outline-warning me-2">Éditer / Dupliquer</button>
-            <button class="btn btn-sm btn-outline-danger me-2">Supprimer</button>
-            <button class="btn btn-sm btn-outline-dark">Fusionner</button>
+            <button class="btn btn-sm btn-outline-primary me-2" id="change-glider-btn">Changer voile</button>
+            <button class="btn btn-sm btn-outline-primary me-2" id="change-site-btn">Changer site</button>
+            <button class="btn btn-sm btn-outline-warning me-2" id="edit-duplicate-btn">Éditer / Dupliquer</button>
+            <button class="btn btn-sm btn-outline-danger me-2" id="delete-btn">Supprimer</button>
+            <button class="btn btn-sm btn-outline-dark" id="merge-btn">Fusionner</button>
           </div>
           
           <!-- Onglet Partage -->
@@ -185,6 +190,20 @@ class LogDetails extends HTMLElement {
         if (commentDeleteBtn) {
           commentDeleteBtn.addEventListener('click', () => this.deleteComment());
         }
+
+        const changeGliderBtn = this.querySelector('#change-glider-btn');
+        if (changeGliderBtn) {
+          changeGliderBtn.addEventListener('click', () => {
+            this.querySelector('log-gliders').open(this.rowData);             
+          });
+        }
+
+        const changeSiteBtn = this.querySelector('#change-site-btn');
+        if (changeSiteBtn) {
+          changeSiteBtn.addEventListener('click', () => {
+            this.querySelector('log-sites').open(this.rowData);             
+          });
+        }
     }
 
     updateDetails(dbFlight) {
@@ -195,7 +214,7 @@ class LogDetails extends HTMLElement {
         this.querySelector('#pilot-label').textContent = this.gettext('Pilot')
         if (dbFlight.V_Track != null) {
             this.querySelector('#pilot-value').textContent = dbFlight.V_Track.info.pilot || 'N/A';
-            console.log('Alt max Gps'+dbFlight.V_Track.stat.maxalt.gps+'m')
+           // console.log('Alt max Gps'+dbFlight.V_Track.stat.maxalt.gps+'m')
             this.querySelector('#alt-value').textContent = dbFlight.V_Track.stat.maxalt.gps+'m' || 'N/A';
             this.querySelector('#vario-value').textContent = dbFlight.V_Track.stat.maxclimb+'m/s' || 'N/A';
             this.querySelector('#mini-value').textContent = dbFlight.V_Track.stat.maxsink+'m/s' || 'N/A';
@@ -265,7 +284,6 @@ class LogDetails extends HTMLElement {
 
     async langRequest() {
         this.i18n = await window.electronAPI.langmsg();
-        console.log('Overview -> '+this.i18n['Overview'])
     }  
 
     gettext(key) {

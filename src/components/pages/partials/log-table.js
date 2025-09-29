@@ -64,8 +64,8 @@ export class LogTable extends HTMLElement {
 
   setupEventListeners() {
     document.addEventListener('com-updated', this.handleComUpdated);        
-      // document.addEventListener('glider-updated', this.handleGliderUpdated);   
-      // document.addEventListener('site-updated', this.handleSiteUpdated); 
+    document.addEventListener('glider-updated', this.handleGliderUpdated);   
+    document.addEventListener('site-updated', this.handleSiteUpdated); 
     document.addEventListener('select-next-row', this.handleSelectNextRow);      
     document.addEventListener('select-prev-row', this.handleSelectPrevRow);        
   }
@@ -206,7 +206,6 @@ export class LogTable extends HTMLElement {
         const rowData = dt.row(indexes).data();
         const rowIndex = indexes;
         const dbFlight = await this.readIgc(rowData.V_ID, rowData.V_Engin);
-        console.log('Alt max Gps'+dbFlight.V_Track.stat.maxalt.gps+'m')
         this.dispatchEvent(new CustomEvent('row-selected', {
           detail: { rowIndex, rowData, dbFlight },
           bubbles: true,
@@ -353,54 +352,139 @@ export class LogTable extends HTMLElement {
   }  
 
     handleComUpdated = async (event) => {
-        const { rowIndex,V_ID, V_Commentaire } = event.detail;
-        console.log('row-updated : ' + V_ID + ' ' + V_Commentaire);
-        // Met à jour la base de données via IPC
-        const params = {
-            invoketype: 'db:update',
-            args: {
-                sqltable: 'Vol',
-                sqlparams: {
-                    V_Commentaire: V_Commentaire
-                },
-                sqlwhere: {
-                    V_ID: V_ID
-                }
-            }
-        };
-        const result = await window.electronAPI.invoke(params);
-    if (result.success) {
-      // Met à jour la ligne concernée dans la DataTable avec rowIndex fourni
-      if (this.dataTableInstance && typeof rowIndex !== 'undefined') {
-        const rowData = this.dataTableInstance.row(rowIndex).data();
-        rowData.V_Commentaire = V_Commentaire;
-        const node = this.dataTableInstance.row(rowIndex).node();
-        if (node) {
-          if (V_Commentaire && V_Commentaire !== '') {
-            console.log('add table-warning');
-            node.classList.add('table-warning');
-          } else {
-            console.log('remove table-warning');
-            node.classList.remove('table-warning');
+      const { rowIndex,V_ID, V_Commentaire } = event.detail;
+      console.log('row-updated : ' + V_ID + ' ' + V_Commentaire);
+      // Met à jour la base de données via IPC
+      const params = {
+          invoketype: 'db:update',
+          args: {
+              sqltable: 'Vol',
+              sqlparams: {
+                  V_Commentaire: V_Commentaire
+              },
+              sqlwhere: {
+                  V_ID: V_ID
+              }
           }
+      };
+      const result = await window.electronAPI.invoke(params);
+      if (result.success) {
+        // Met à jour la ligne concernée dans la DataTable avec rowIndex fourni
+        if (this.dataTableInstance && typeof rowIndex !== 'undefined') {
+          const rowData = this.dataTableInstance.row(rowIndex).data();
+          rowData.V_Commentaire = V_Commentaire;
+          const node = this.dataTableInstance.row(rowIndex).node();
+          if (node) {
+            if (V_Commentaire && V_Commentaire !== '') {
+              console.log('add table-warning');
+              node.classList.add('table-warning');
+            } else {
+              console.log('remove table-warning');
+              node.classList.remove('table-warning');
+            }
+          }
+          this.dataTableInstance.row(rowIndex).data(rowData).draw(false);
         }
-        this.dataTableInstance.row(rowIndex).data(rowData).draw(false);
-      }
-      // Affiche le toast
-      const toastEl = document.getElementById('msg-toast');
-      if (toastEl) {
-        const toastBody = toastEl.querySelector('#toast-txt');
-        if (toastBody) {
-        toastBody.textContent = this.gettext('Saved changes');
+        // Affiche le toast
+        const toastEl = document.getElementById('msg-toast');
+        if (toastEl) {
+          const toastBody = toastEl.querySelector('#toast-txt');
+          if (toastBody) {
+          toastBody.textContent = this.gettext('Saved changes');
+          }
+          const toast = new bootstrap.Toast(toastEl);
+          toast.show();
         }
-        const toast = new bootstrap.Toast(toastEl);
-        toast.show();
+      } else {
+        console.error('Erreur lors de la mise à jour :', result.message);
       }
-    } else {
-      console.error('Erreur lors de la mise à jour :', result.message);
-    }
     }      
   
+    handleGliderUpdated = async (event) => {
+      const { V_Engin } = event.detail;
+      let rows = this.dataTableInstance.rows('.selected');
+      const selectedRowsData = rows.data().toArray();
+      console.log('multi-updated : ' + V_Engin + ' ' + selectedRowsData.length + ' lignes à modifier');
+
+      for (const rowData of selectedRowsData) {
+          try {
+              const flightId = rowData.V_ID;
+              const params = {
+                  invoketype: 'db:update',
+                  args: {
+                      sqltable: 'Vol',
+                      sqlparams: {
+                          V_Engin: V_Engin
+                      },
+                      sqlwhere: {
+                          V_ID: flightId
+                      }
+                  }
+              };
+              const result = await window.electronAPI.invoke(params);
+              if (result.success) {
+                  // Met à jour la cellule dans la table affichée
+                  const rowIdx = this.dataTableInstance.row(function(idx, data) {
+                      return data.V_ID === flightId;
+                  }).index();
+                  if (rowIdx !== undefined) {
+                      this.dataTableInstance.cell({row: rowIdx, column: 6}).data(V_Engin);
+                  }
+              } else {
+                  console.error('Erreur lors de la mise à jour :', result.message);
+              }
+          } catch (error) {
+              console.error('Error during flight update ' + error);
+          }
+      }
+    }  
+    
+    handleSiteUpdated = async (event) => {
+        const siteUpdate = event.detail;
+        let rows = this.dataTableInstance.rows('.selected');
+        const selectedRowsData = rows.data().toArray();
+        console.log('multi-updated : ' + siteUpdate.V_Site + ' ' + selectedRowsData.length + ' lignes à modifier');
+        let args =  {
+                        sqltable: 'Vol',
+                        sqlparams: null,
+                        sqlwhere: null
+                    }
+        if (siteUpdate.V_LatDeco == null && siteUpdate.V_LongDeco == null) {
+            args.sqlparams = { V_Site : siteUpdate.V_Site}
+        } else {
+            args.sqlparams = { 
+                V_Site: siteUpdate.V_Site,
+                V_LatDeco: siteUpdate.V_LatDeco,
+                V_LongDeco: siteUpdate.V_LongDeco,
+                V_AltDeco: siteUpdate.V_AltDeco,
+                V_Pays: siteUpdate.V_Pays
+            }
+        }
+      for (const rowData of selectedRowsData) {
+          try {
+              const flightId = rowData.V_ID;
+              args.sqlwhere = { V_ID: flightId };               
+              const params = {
+                  invoketype: 'db:update', args: args
+              };
+              const result = await window.electronAPI.invoke(params);
+              if (result.success) {
+                  // Met à jour la cellule dans la table affichée
+                  const rowIdx = this.dataTableInstance.row(function(idx, data) {
+                      return data.V_ID === flightId;
+                  }).index();
+                  if (rowIdx !== undefined) {
+                      this.dataTableInstance.cell({row: rowIdx, column: 5}).data(siteUpdate.V_Site);
+                  }
+              } else {
+                  console.error('Erreur lors de la mise à jour :', result.message);
+              }
+          } catch (error) {
+              console.error('Error during flight update ' + error);
+          }
+      }
+    }           
+    
   displayModal(title, body) {
       const modal = this.querySelector('#winModal');
       const modalTitle = modal.querySelector('#winModalLabel');
