@@ -59,7 +59,6 @@ ipcMain.handle('db:query', async (event, args) => {
     }
 });
 
-// Exemple d'un handler pour réaliser une insertion
 ipcMain.handle('db:insert', async (event, args) => {
     if (!db) {
         return { success: false, message: 'No database open' };
@@ -93,7 +92,6 @@ ipcMain.handle('db:insert', async (event, args) => {
 });
 
 ipcMain.handle('db:update', async (event, args) => {
-    console.log('db:update called with args:', args);
     if (!db) {
         return { success: false, message: 'No database open' };
     }
@@ -118,6 +116,33 @@ ipcMain.handle('db:update', async (event, args) => {
         const result = stmt.run(...values);
         if (result.changes === 0) {
             throw new Error('No rows were updated');
+        }
+        return { success: true, result };
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('db:delete', async (event, args) => {
+    if (!db) {
+        return { success: false, message: 'No database open' };
+    }
+    try {
+        const table = args.sqltable;
+        const where = args.sqlwhere;   // objet {colonne: valeur}
+        // Construction de la clause WHERE
+        const whereClause = Object.keys(where)
+            .map(col => `${col} = ?`)
+            .join(' AND ');
+        // Construction du tableau de valeurs
+        const values = [...Object.values(where)];
+        // Requête SQL finale
+        const sqlQuery = `DELETE FROM ${table} WHERE ${whereClause}`;
+        console.log('Constructed SQL delete:', sqlQuery, values);
+        const stmt = db.prepare(sqlQuery);
+        const result = stmt.run(...values);
+        if (result.changes === 0) {
+            throw new Error('No rows were deleted');
         }
         return { success: true, result };
     } catch (error) {

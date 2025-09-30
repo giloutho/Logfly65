@@ -40,25 +40,33 @@ class LogSites extends HTMLElement {
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.2rem;">
-                                
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                   <span style="min-width: 320px; display: inline-block;">
-                                        <b>${this.gettext('Option 1')}</b> : ${this.gettext('Update name')}
+                            <div class="alert alert-info">    
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="min-width: 320px; display: inline-block;">
+                                            <b>${this.gettext('Option 1')}</b> : ${this.gettext('Update name')}
+                                        </span>
+                                        <input type="text" id="newname" class="form-control" style="min-width: 350px; max-width: 100%;" placeholder="${this.gettext('Enter new site name')}">
+                                </div>
+                            </div>
+                            <div class="alert alert-info">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="min-width: 320px; display: inline-block;">
+                                        <b>${this.gettext('Option 2')}</b> : ${this.gettext('Switch to an existing site')}
                                     </span>
-                                    <input type="text" id="newname" class="form-control" style="min-width: 350px; max-width: 100%;" placeholder="${this.gettext('Enter new site name')}">
+                                    <select id="flight-site" class="form-select" style="min-width: 350px; max-width: 100%;"></select>
+                                </div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                 <span style="min-width: 320px; display: inline-block;">
-                                    <b>${this.gettext('Option 2')}</b> : ${this.gettext('Switch to an existing site')}
-                                </span>
-                                <select id="flight-site" class="form-select" style="min-width: 350px; max-width: 100%;"></select>
-                            </div>
-                            <div style="display: flex; align-items: center;">
-                                <div id="winModalTitle">A définir</div>
-                                <span id="newvalue" style="margin-left: 20px;">No data</span>
+                            <div class="alert alert-info">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-weight: bold;">${this.gettext('Current')}</span>
+                                    <span id="oldSiteName">A définir</span>
+                                    <span style="font-weight: bold;">${this.gettext('become')}</span>
+                                    <span id="newvalue">No data</span>
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${this.gettext('Cancel')}</button> 
                             <button type="button" class="btn btn-success" id="change-btn">${this.gettext('Confirm')}</button>
                         </div>                        
                     </div>
@@ -82,7 +90,7 @@ class LogSites extends HTMLElement {
 
         this.fillSitesList();
    
-        this.querySelector('#winModalTitle').innerHTML = rowData.V_Site+'  ->  '
+        this.querySelector('#oldSiteName').innerHTML = rowData.V_Site
         const newValueDiv = this.querySelector('#newvalue');
         newValueDiv.innerHTML = '';
         const newNameInput = this.querySelector('#newname');

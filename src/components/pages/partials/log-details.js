@@ -134,11 +134,17 @@ class LogDetails extends HTMLElement {
           
           <!-- Onglet Modification -->
           <div class="tab-pane fade" id="modify" role="tabpanel">
-            <button class="btn btn-sm btn-outline-primary me-2" id="change-glider-btn">Changer voile</button>
-            <button class="btn btn-sm btn-outline-primary me-2" id="change-site-btn">Changer site</button>
-            <button class="btn btn-sm btn-outline-warning me-2" id="edit-duplicate-btn">Éditer / Dupliquer</button>
-            <button class="btn btn-sm btn-outline-danger me-2" id="delete-btn">Supprimer</button>
-            <button class="btn btn-sm btn-outline-dark" id="merge-btn">Fusionner</button>
+            <div class="d-flex flex-row gap-2 mb-2">
+              <button class="btn btn-sm btn-outline-primary" id="change-glider-btn">Changer voile</button>
+              <button class="btn btn-sm btn-outline-primary" id="change-site-btn">Changer site</button>
+            </div>
+            <div class="mb-2">
+              <button class="btn btn-sm btn-outline-danger" id="delete-btn">Supprimer</button>
+            </div>
+            <div class="d-flex flex-row gap-2">
+              <button class="btn btn-sm btn-outline-warning" id="edit-duplicate-btn">Éditer / Dupliquer</button>
+              <button class="btn btn-sm btn-outline-dark" id="merge-btn">Fusionner</button>
+            </div>
           </div>
           
           <!-- Onglet Partage -->
@@ -204,6 +210,13 @@ class LogDetails extends HTMLElement {
             this.querySelector('log-sites').open(this.rowData);             
           });
         }
+
+        const deleteBtn = this.querySelector('#delete-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', () => {   
+            this.deleteFlight(this.rowData.V_ID);
+          });
+        }
     }
 
     updateDetails(dbFlight) {
@@ -266,6 +279,21 @@ class LogDetails extends HTMLElement {
         }
         this.updateComment()
     } 
+
+    deleteFlight(V_ID) {
+        if (V_ID != null) {
+            if (confirm(this.gettext('Are you sure you want to continue')+' ?')) {
+                this.dispatchEvent(new CustomEvent('flight-deleted', {
+                    detail: {
+                        rowIndex: this.rowIndex,
+                        V_ID: V_ID
+                    },
+                    bubbles: true,
+                    composed: true
+                }));       
+            }
+        } 
+    }
 
     updateComment() {
         const newComment = this.querySelector('#comment-input').value;

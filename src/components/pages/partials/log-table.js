@@ -66,6 +66,7 @@ export class LogTable extends HTMLElement {
     document.addEventListener('com-updated', this.handleComUpdated);        
     document.addEventListener('glider-updated', this.handleGliderUpdated);   
     document.addEventListener('site-updated', this.handleSiteUpdated); 
+    document.addEventListener('flight-deleted', this.handleFlightDeleted); 
     document.addEventListener('select-next-row', this.handleSelectNextRow);      
     document.addEventListener('select-prev-row', this.handleSelectPrevRow);        
   }
@@ -484,6 +485,39 @@ export class LogTable extends HTMLElement {
           }
       }
     }           
+
+    handleFlightDeleted = async (event) => {
+      const { rowIndex,V_ID } = event.detail;
+      if (this.dataTableInstance) {
+        if (rowIndex !== undefined) {
+          // Supprsession de la base de données via IPC
+          try {
+              const params = {
+                  invoketype: 'db:delete',
+                  args: {
+                      sqltable: 'Vol',
+                      sqlwhere: {
+                          V_ID: V_ID
+                      }
+                  }
+              };
+              const result = await window.electronAPI.invoke(params);
+              if (result.success) {
+                // Supprime la ligne de la DataTable
+                this.dataTableInstance.row(rowIndex).remove().draw(false);
+                // Sélectionne la première ligne si elle existe
+                if (this.dataTableInstance.rows().count() > 0) {
+                  this.dataTableInstance.row(':eq(0)').select();
+                }
+              } else {
+                  this.displayModal(this.gettext('Database update failed'), result.message);
+              }
+          } catch (error) {
+              this.displayModal(this.gettext('Database update failed'), result.message);
+          }
+        }
+      }
+    }
     
   displayModal(title, body) {
       const modal = this.querySelector('#winModal');
