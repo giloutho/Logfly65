@@ -12,11 +12,11 @@ export class LogTable extends HTMLElement {
   }
   constructor() {
     super();
-  this.dataTableInstance = null;
-  this.i18n = {}; // Pour stocker les messages
-  this.langLoaded = false;
-  this.initialTableLines = 8; // Mémorise le nombre de lignes initial
-  this.tableLines = this.initialTableLines; // Nombre de lignes par page
+    this.dataTableInstance = null;
+    this.i18n = {}; // Pour stocker les messages
+    this.langLoaded = false;
+    this.initialTableLines = 8; // Mémorise le nombre de lignes initial
+    this.tableLines = this.initialTableLines; // Nombre de lignes par page
   }
 
   async connectedCallback() {
