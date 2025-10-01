@@ -1,4 +1,3 @@
-// components/app-table.js
 export class LogTable extends HTMLElement {
   setTableLines(lines) {
     if (lines === 'reset') {
