@@ -13,12 +13,10 @@ export class HomePage extends HTMLElement {
                         <log-table class="h-100" style="font-size: 12px;font-weight: 400; line-height: 1;"></log-table>
                         <log-details></log-details>
                     </div>
-                    </div>
                 </div>
 
         `;
   }
-
 
   async openDb() {
 
