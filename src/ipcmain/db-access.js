@@ -4,20 +4,14 @@ const path = require('path');
 const process = require('process')
 const { app } = require('electron');
 const log = require('electron-log/main');
-const { DatabaseSync } = require('node:sqlite');
-
-let db = null;
+const dbCore = require('./db-core');
 
 ipcMain.handle('db:open', async (event, args) => {
     const dbPath = path.join(app.getPath('userData'),args.dbname);
-    if (!fs.existsSync(dbPath)) {
-        return { success: false, message: 'Database file does not exist' };
-    }
     try {
-        db = new DatabaseSync(dbPath);
-        const stmtVol = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
-        const resVol = stmtVol.get('Vol')
-        if (resVol != undefined && resVol != null && resVol['name'] == 'Vol') {
+        dbCore.openDatabase(args.dbname);
+        const stmtVol = dbCore.query(`SELECT name FROM sqlite_master WHERE type='table' AND name='Vol'`);
+        if (stmtVol.length > 0) {
             return { success: true, message: 'Database opened successfully' };
         } 
         return { success: false, message: 'Database is not valid' };
@@ -34,7 +28,6 @@ ipcMain.handle('db:open', async (event, args) => {
         } else {
             log.error('ERREUR: Le fichier n\'existe pas !');
         }                      
-        db = null;
         return { success: false, message: errMsg };
     }
 });
@@ -45,14 +38,8 @@ ipcMain.handle('db:open', async (event, args) => {
 // on peut utiliser les apostrophes simples (') sans les échapper :
 // const sql = "SELECT V_ID, strftime('%d-%m-%Y',V_date) AS Day, strftime('%H:%M',V_date) AS Hour FROM Vol ORDER BY V_Date DESC";
 ipcMain.handle('db:query', async (event, args) => {
-    const req = args.sqlquery;
-    if (!db) {
-        return { success: false, message: 'No database open' };
-    }
     try {
-        const query = db.prepare(req);
-        // Execute the prepared statement and log the result set.        
-        const result = query.all();
+        const result = dbCore.query(args.sqlquery);
         return { success: true, result };
     } catch (error) {
         return { success: false, message: error.message };
@@ -60,31 +47,16 @@ ipcMain.handle('db:query', async (event, args) => {
 });
 
 ipcMain.handle('db:insert', async (event, args) => {
-    if (!db) {
-        return { success: false, message: 'No database open' };
-    }
     try {
         // Récupération des composants de la requête
         const table = args.sqltable;
         const params = args.sqlparams;
-        // Construction des clauses
-        const columns = Object.keys(params).join(', ');
-        // Échappement des quotes simples dans les valeurs
-        const values = Object.values(params)
-            .map(value => `'${String(value).replace(/'/g, "''")}'`)
-            .join(', ');
-
-        // Assemblage final de la requête
-        const sqlQuery = `INSERT INTO ${table} (${columns}) VALUES (${values})`;
-        const stmt = db.prepare(sqlQuery)
-        const result = stmt.run();
+        const result = dbCore.insert(table, params);
         // Sqlite statement.run returns an object with changes and lastInsertRowid properties
         // result = { changes: stmt.changes, lastInsertRowid: stmt.lastInsertRowid };
         if (result.changes === 0) {
             throw new Error('No rows were inserted');
         }
-        // Log the result of the insertion          
-        console.log('Insert result:', result);
         return { success: true, result };
     } catch (error) {
         return { success: false, message: error.message };
@@ -92,28 +64,11 @@ ipcMain.handle('db:insert', async (event, args) => {
 });
 
 ipcMain.handle('db:update', async (event, args) => {
-    if (!db) {
-        return { success: false, message: 'No database open' };
-    }
     try {
         const table = args.sqltable;
         const params = args.sqlparams; // objet {colonne: valeur}
-        const where = args.sqlwhere;   // objet {colonne: valeur}
-        // Construction de la clause SET
-        const setClause = Object.keys(params)
-            .map(col => `${col} = ?`)
-            .join(', ');
-        // Construction de la clause WHERE
-        const whereClause = Object.keys(where)
-            .map(col => `${col} = ?`)
-            .join(' AND ');
-        // Construction du tableau de valeurs
-        const values = [...Object.values(params), ...Object.values(where)];
-        // Requête SQL finale
-        const sqlQuery = `UPDATE ${table} SET ${setClause} WHERE ${whereClause}`;
-        console.log('Constructed SQL update:', sqlQuery, values);
-        const stmt = db.prepare(sqlQuery);
-        const result = stmt.run(...values);
+        const where = args.sqlwhere;   // objet {colonne: valeur}        
+        const result = dbCore.update(table, params, where);
         if (result.changes === 0) {
             throw new Error('No rows were updated');
         }
@@ -124,23 +79,10 @@ ipcMain.handle('db:update', async (event, args) => {
 });
 
 ipcMain.handle('db:delete', async (event, args) => {
-    if (!db) {
-        return { success: false, message: 'No database open' };
-    }
     try {
         const table = args.sqltable;
         const where = args.sqlwhere;   // objet {colonne: valeur}
-        // Construction de la clause WHERE
-        const whereClause = Object.keys(where)
-            .map(col => `${col} = ?`)
-            .join(' AND ');
-        // Construction du tableau de valeurs
-        const values = [...Object.values(where)];
-        // Requête SQL finale
-        const sqlQuery = `DELETE FROM ${table} WHERE ${whereClause}`;
-        console.log('Constructed SQL delete:', sqlQuery, values);
-        const stmt = db.prepare(sqlQuery);
-        const result = stmt.run(...values);
+        const result = dbCore.deleteRow(table, where);
         if (result.changes === 0) {
             throw new Error('No rows were deleted');
         }
