@@ -1,3 +1,8 @@
+
+/*
+    Module pour le scan de traces depuis un disque (interne ou externe)
+*/
+
 const {ipcMain} = require('electron')
 const path = require('node:path');
 const fs = require('node:fs');

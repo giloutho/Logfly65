@@ -280,16 +280,6 @@ class ImpTable extends HTMLElement {
         updateBtn.disabled = true;
         updateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + this.gettext('Logbook update');
       }    
-      // Ouvre la base de données et attends le retour
-      const dbResult = await this.dbOpen();
-      if (!dbResult || !dbResult.success) {
-        this.displayStatus(this.gettext('Database connection failed') + ' : ' + dbResult.message, 'error');
-        if (updateBtn) {
-          updateBtn.disabled = false;
-          updateBtn.innerHTML = this.gettext('Logbook update');
-        }
-        return;
-      }
       let data = [];
       let nbToInsert = 0;
       this.dataTableInstance.rows().data().toArray().forEach(row => {
@@ -302,13 +292,19 @@ class ImpTable extends HTMLElement {
       // Boucle asynchrone séquentielle
       for (const element of data) {
         try {
-          const result = await this.dbAddflight(element);
-          if (result.success) {
+            const params = {
+                invoketype: 'db:addflight',
+                args: {
+                    flightData : element
+                }
+            }            
+            const result = await window.electronAPI.invoke(params);            
+            if (result.success) {
             nbInserted++;            
-          } else {
-            // A archiver dans le journal de log
-            console.log('Error adding flight: ' + result.message);
-          }
+            } else {
+                // A archiver dans le journal de log
+                console.log('Error adding flight: ' + result.message);
+            }
         } catch (error) {
           // A archiver dans le journal de log
           console.log('Error adding flight: ' + error.message);
@@ -324,23 +320,6 @@ class ImpTable extends HTMLElement {
       const divTable = this.querySelector('#div_table');
       if (divTable) divTable.style.display = 'none';
     }
-
-    /* ******** Database functions ******** */
-    async dbOpen() {
-      let dbPath = '../../../assets/test.db';
-      //dbPath = new URL(dbPath, import.meta.url).pathname; // Convertit le chemin relatif en absolu
-      try {
-          const result = await window.electronAPI.dbOpen(dbPath);
-          if (result.success) {
-              console.log(`${dbPath} -> ${result.message}`);
-          } else {
-              console.error(`\n-> ${result.message}`);
-          }
-          return result;
-      } catch (err) {
-          console.error('Erreur lors de l\'ouverture de la base de données:', err);
-      }      
-    } 
 
     async dbAddflight(flightData) {      
         // Mise en forme des champs requis pour l'insertion
