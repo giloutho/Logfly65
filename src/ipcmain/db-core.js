@@ -21,7 +21,7 @@ function isDatabaseOpen() {
 
 function query(sql) {
     if (!db) throw new Error('No database open');
-    console.log('requête en cours :', sql);
+    //console.log('requête en cours :', sql);
     const stmt = db.prepare(sql);
     return stmt.all();
 }
