@@ -1,9 +1,14 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+const path = require('node:path');
 
 module.exports = {
   packagerConfig: {
     asar: true,
+    // Ajoute cette ligne pour inclure le dossier lang
+    extraResource: [
+      path.resolve(__dirname, 'lang')
+    ],    
   },
   rebuildConfig: {},
   makers: [

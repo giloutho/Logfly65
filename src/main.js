@@ -72,23 +72,24 @@ app.on('window-all-closed', () => {
 });
 
 function loadLanguage() {
-  let currLangFile = '../lang/'
-  //let currLang = store.get('lang')
   let currLang = 'fr'
   if (currLang == undefined || currLang == null || currLang == '') {
     currLang = 'en'
   } 
+  // Chemin universel (dev + prod)
+  let langDir;
+  if (process.env.NODE_ENV !== 'production') {
+    langDir = path.join(__dirname, '../lang');
+  } else {
+    langDir = path.join(app.getAppPath(), '../lang');
+  }
+  let currLangFile = path.join(langDir, currLang + '.json');
+
   try {    
-    if (currLang != undefined && currLang != 'en') {
-      currLangFile += currLang+'.json'
-      currLangFile = path.join(__dirname, 'lang', currLang + '.json');
-      let content = fs.readFileSync(currLangFile);
-      langjson = JSON.parse(content);
-    } else {
-      langjson = {}
-    }
+    let content = fs.readFileSync(currLangFile);
+    langjson = JSON.parse(content);
   } catch (error) {
-    log.error('[main.js] Error while loading : '+currLangFile+' error :'+error)
+    log.error('[main.js] Error while loading : ' + currLangFile + ' error :' + error)
   }  
 }
 
