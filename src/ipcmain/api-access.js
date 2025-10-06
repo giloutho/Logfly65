@@ -30,7 +30,6 @@ async function callPgearthAPI(pgurl) {
                     takeoff_description: props.takeoff_description,
                     coordinates: coords
                 };
-                console.log('With api:pgearth paragliding takeoff site found:', result.name);
             } else {
                 result = {
                     success: false,
@@ -44,7 +43,7 @@ async function callPgearthAPI(pgurl) {
             };
         }
     } catch (error) {
-        console.error('With api:pgearth fetch error :', error);
+        log.error('Api:pgearth fetch error :', error);
         result = {
             success: false,
             message: error.message

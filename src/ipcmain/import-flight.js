@@ -5,13 +5,14 @@
 const {ipcMain} = require('electron')
 const path = require('node:path');
 const fs = require('node:fs');
+const log = require('electron-log/main');
 const dbCore = require('./db-core');
 const { callPgearthAPI } = require('./api-access');
 const trigo = require('../js/trigo.js')
 
 ipcMain.handle('db:addflight', async (event, args) => {
     const flightData = args.flightData;
-    console.log('Import du vol : ', flightData.date);
+    const strRename = args.strRename;
     // Mise en forme des champs requis pour l'insertion
     const pDate = `${flightData.date} ${flightData.startTime}`;  // INSERT INTO Vol (V_Date
     const pDuree = flightData.duration;  //V_Duree
@@ -31,11 +32,11 @@ ipcMain.handle('db:addflight', async (event, args) => {
     let pPays = null     
     try {
         pIGC = await readIGCFile({ filePath: flightData.path });
-        if (pIGC) {
+        if (pIGC.success) {
             // recherche du site de décollage       
             let searchSite = await searchSiteInDb(pLatDeco, pLongDeco);
-            console.log('searchSite : ', searchSite);
             if (searchSite != null && searchSite != '') {
+                console.log(pDate,' site from db ',searchSite)
                 let fullSite = searchSite.split('*')
                 if (fullSite.length > 0) {
                     pSite = fullSite[0]
@@ -45,15 +46,15 @@ ipcMain.handle('db:addflight', async (event, args) => {
                     pPays = '***'
                 }
             } else {
-                console.log('Aucun site trouvé dans la base pour ces coordonnées, création d\'un nouveau site');
                 // Création du site correspondant au décollage
                 // provenance : Paragliding Earth ou ajout d'un site à renommer
-                const dbAddSite = await this.addNewSite(pLatDeco, pLongDeco, pAltDeco)
+                const dbAddSite = await addNewSite(pLatDeco, pLongDeco, pAltDeco, strRename);
                 if (dbAddSite.success) {
+                    log.info('Flight ', pDate, ' add site with addNewSite ', dbAddSite.newFlightSite.name)
                     pSite = dbAddSite.newFlightSite.name;
                     pPays = dbAddSite.newFlightSite.pays;
                 } else {
-                    console.error(`\n-> Erreur lors de l'ajout du site : ${dbAddSite.message}`);
+                    log.error(`\n-> Erreur lors de l'ajout du site : ${dbAddSite.message}`);
                     pSite = 'Unable to create new site';
                     pPays = '***';
                 }                
@@ -69,41 +70,21 @@ ipcMain.handle('db:addflight', async (event, args) => {
                 V_AltDeco: pAltDeco,
                 V_Site: pSite,
                 V_Pays: pPays,
-                V_IGC: pIGC,
+                V_IGC: pIGC.data,
                 UTC: pUTC,
                 V_Engin: pEngin
             }
-            console.log(`${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.V_LatDeco} ${sqlparams.V_LongDeco} ${sqlparams.UTC} ${sqlparams.V_Engin} ${sqlparams.V_Site} ${sqlparams.V_Pays}`);
-            // const params = {
-            //   invoketype: 'db:insert',
-            //   args: { sqltable, sqlparams }
-            // };
-            // const result = await window.electronAPI.invoke(params);
-            // if (result.success) {
-            //   // // Met à jour l'état d'insertion
-            //   // flightData.toInsert = false;
-            //   // // Met à jour la classe CSS de la ligne dans la DataTable
-            //   // const rowIdx = this.dataTableInstance.rows().indexes().toArray().find(idx => {
-            //   //   return this.dataTableInstance.row(idx).data() === flightData;
-            //   // });
-            //   // if (rowIdx !== undefined) {
-            //   //   const rowNode = this.dataTableInstance.row(rowIdx).node();
-            //   //   if (rowNode) {
-            //   //     rowNode.classList.remove('importred');
-            //   //     rowNode.classList.add('importgreen');
-            //   //     // // Remplace la checkbox par l'image dans la première cellule
-            //   //     const firstCell = rowNode.querySelector('td');
-            //   //     if (firstCell) {
-            //   //       firstCell.innerHTML = '<img class="importgreen" src="../main_window/static/images/in_logbook.png" alt=""></img>';
-            //   //     }                    
-            //   //   }
-            //   // }
-            //   // // Met à jour le compteur
-            //   // this.updateInsertCountStatus();                
-            //   return { success: true, message: 'Flight added successfully' };
-            // } else {
-            //     return { success: false, message: result.message };
-            // }
+            //console.log(`${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.V_LatDeco} ${sqlparams.V_LongDeco} ${sqlparams.UTC} ${sqlparams.V_Engin} ${sqlparams.V_Site} ${sqlparams.V_Pays}`);
+            const dbAddFlight = await dbCore.insert(sqltable, sqlparams);
+            if (dbAddFlight.changes === 0) {
+                log.error(`Insertion error for flight : ${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.UTC} ${sqlparams.V_Site}`);
+                throw new Error('Flight not inserted');
+            } else {
+                return { success: true, message: 'Flight added successfully' };
+            }
+        } else {
+            const errMsg = 'Error reading IGC file' + ' : ' + pIGC.message;
+            return { success: false, message: errMsg };            
         }
     } catch (err) {
         pIGC = null;
@@ -147,90 +128,76 @@ async function searchSiteInDb(pLat, pLong) {
     return selectedSite;
 }  
 
-async function addNewSite(lat, lng, alt) {
-    const updateDate = new Date()
-    const sqlDate = updateDate.getFullYear()+'-'+String((updateDate.getMonth()+1)).padStart(2, '0')+'-'+String(updateDate.getDate()).padStart(2, '0')                 
-    const sqltable = 'Site';    
-    let sqlparams = {
-        S_CP : '***', // Code postal inconnu, à compléter par l'utilisateur
-        S_Type : 'D',
-        S_Maj: sqlDate
-    }        
-    // First we try to find the takeoff site with the API ParaglidingEarth
-    const result = await this.callPgearthAPI(lat, lng);
-    if (result.success) {
-        // ouverrture de la base de données
-        // le site est ajouté à la table Sites de la base données
-        // le site est ajouté dans les caractéristiques du vol
-        console.log('Sites trouvés :', result.name, result.takeoff_altitude);                
-        sqlparams.S_Nom = result.name.toUpperCase();
-        sqlparams.S_Pays = result.countryCode.toUpperCase();
-        sqlparams.S_Alti = result.takeoff_altitude;
-        sqlparams.S_Latitude = result.coordinates[1];
-        sqlparams.S_Longitude = result.coordinates[0];                       
-    } else {
-        // Pas de site trouvé ou erreur retournée par l'API paraglidingEarth
-        console.log('Erreur retournée par l\'API PgEarth :', result.message);
-        // Search index of new blank site : 
-        const blanckIdx = await this.searchIdxBlankSite();
-        sqlparams.S_Nom = blanckIdx.siteName;
-        sqlparams.S_Pays = '';
-        sqlparams.S_Alti = alt;
-        sqlparams.S_Latitude = lat;
-        sqlparams.S_Longitude = lng;  
+async function addNewSite(lat, lng, alt, strRename) {
+    try {    
+        const updateDate = new Date()
+        const sqlDate = updateDate.getFullYear()+'-'+String((updateDate.getMonth()+1)).padStart(2, '0')+'-'+String(updateDate.getDate()).padStart(2, '0')                 
+        const sqltable = 'Site';    
+        let sqlparams = {
+            S_CP : '***', // Code postal inconnu, à compléter par l'utilisateur
+            S_Type : 'D',
+            S_Maj: sqlDate
+        }        
+        // First we try to find the takeoff site with the API ParaglidingEarth
+        const result = await callPgearth(lat, lng);    
+        if (result.success) {
+            // ouverrture de la base de données
+            // le site est ajouté à la table Sites de la base données
+            // le site est ajouté dans les caractéristiques du vol             
+            sqlparams.S_Nom = result.name.toUpperCase();
+            sqlparams.S_Pays = result.countryCode.toUpperCase();
+            sqlparams.S_Alti = result.takeoff_altitude;
+            sqlparams.S_Latitude = result.coordinates[1];
+            sqlparams.S_Longitude = result.coordinates[0];                       
+        } else {
+            // Pas de site trouvé ou erreur retournée par l'API paraglidingEarth
+            // Search index of new blank site : 
+            const blanckIdx = await searchIdxBlankSite(strRename);
+            sqlparams.S_Nom = blanckIdx.siteName;
+            sqlparams.S_Pays = '';
+            sqlparams.S_Alti = alt;
+            sqlparams.S_Latitude = lat;
+            sqlparams.S_Longitude = lng;  
     }
-    // New site is added to the database
-    console.log('sqlparams:', sqlparams);
-    const params = {
-        invoketype: 'db:insert',
-        args: { sqltable, sqlparams }
-    };
-    const dbAddSite = await window.electronAPI.invoke(params);
-    if (dbAddSite.success) {
+        // New site is added to the database
+        // console.log('sqlparams:', sqlparams);
+        const dbAddSite = await dbCore.insert(sqltable, sqlparams);
+        if (dbAddSite.changes === 0) {
+            throw new Error('Site not inserted');
+        }
         const newFlightSite = {
             name : sqlparams.S_Nom,
             pays : sqlparams.S_Pays
         }
         return { success: true, newFlightSite};
-    } else {
-        console.error('Erreur lors de l\'ouverture de la base de données:', dbAddSite.message);
-        return { success: false, message: dbAddSite.message };
-    }           
+    } catch (error) {
+        console.error('Error in addNewSite :', error);
+        return { success: false, message: dbAddSite.message };        
+    }          
 }
 
-async function searchIdxBlankSite() {
+async function searchIdxBlankSite(strRename) {
     // The name of an unknown site is : Site No XX to rename
     // We search last index XX
-    const lastStr = this.gettext('To rename');
+    const lastStr = strRename;
     const siteArg = 'Site No%';
-    const reqSQL = `SELECT Count(S_ID) as count FROM Site WHERE S_Nom LIKE '${siteArg}'`;
-    const params = {
-        invoketype: 'db:query',
-        args: { sqlquery: reqSQL }
-    };
-    const resDb = await window.electronAPI.invoke(params);
     let blanckIdx = {
         newSiteIdx : '',
         siteName :'Unknown site'
+    }    
+    const reqSQL = `SELECT Count(S_ID) as count FROM Site WHERE S_Nom LIKE '${siteArg}'`;
+    const resDb = await dbCore.query(reqSQL);
+    if (resDb.length === 0 || resDb[0].count === 0) {
+        blanckIdx.newSiteIdx = 1;
+        blanckIdx.siteName = `Site No ${blanckIdx.newSiteIdx} (${lastStr})`;
+    } else  if (resDb.length > 0) {
+        blanckIdx.newSiteIdx = resDb[0].count + 1;
+        blanckIdx.siteName = `Site No ${blanckIdx.newSiteIdx} (${lastStr})`;
     }
-    if (resDb.success) {
-        if (resDb.result.length === 0 || resDb.result[0].count === 0) {
-            blanckIdx.newSiteIdx = 1;
-            blanckIdx.siteName = `Site No ${blanckIdx.newSiteIdx} (${lastStr})`;
-            console.log('Prochain site :', blanckIdx.siteName);
-        } else  if (resDb.result.length > 0) {
-            blanckIdx.newSiteIdx = resDb.result[0].count + 1;
-            blanckIdx.siteName = `Site No ${blanckIdx.newSiteIdx} (${lastStr})`;
-            console.log('Prochain site :', blanckIdx.siteName);
-        }
-    } else {
-        console.error('Erreur lors de la requête:', resDb.message);
-    }
-
     return blanckIdx        
 }
 
-async function callPgearthAPI(lat, lng) {
+async function callPgearth(lat, lng) {
     // On fait comme si on le ramenait d'un paramètrage
     let pgurl = 'https://www.paraglidingearth.com/api/geojson/getAroundLatLngSites.php?distance=1';
     pgurl += `&lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
