@@ -187,7 +187,7 @@ class ImpTable extends HTMLElement {
       select: true             // Activation du plugin select
       }
       this.dataTableInstance = new DataTable(table, dataTableOptions);
-      table.addEventListener('click', (event) => {
+      table.addEventListener('click', async(event) => {
         const target = event.target;
         if (
             target.tagName === 'INPUT' &&
@@ -219,36 +219,30 @@ class ImpTable extends HTMLElement {
             const row = target.closest('tr');
             const rowIndex = Array.from(table.rows).indexOf(row);
             const rowData = this.dataTableInstance.row(row).data();
-            const path = rowData.path;
-            // Initialise et affiche la modale
-            const mapModal = new bootstrap.Modal(this.querySelector('#mapModal'));
-
-            // Attendre que la modale soit complètement ouverte
-            mapModal._element.addEventListener('shown.bs.modal', () => {
+            const pathIgc = rowData.path;
+            const params = {
+                invoketype: 'igc:reading',
+                args: {
+                    igcPath : pathIgc
+                }
+            }
+            const track = await window.electronAPI.invoke(params);  
+            if (track.success) {
+              if (track.data.GeoJSON) {
+                console.log(track.data.fixes.length+' points in track GeoJSON Ok...');
+              }
+              // Initialise et affiche la modale
+              const mapModal = new bootstrap.Modal(this.querySelector('#mapModal'));
+              // Attendre que la modale soit complètement ouverte
+              mapModal._element.addEventListener('shown.bs.modal', () => {
                 const previewMap = this.querySelector('map-preview');
                 if (previewMap) {
-                  previewMap.showMap(); // Appelle la méthode qui initialise la carte                  
-                    // Appeler une fonction pour charger et afficher le fichier IGC
-                   // this.loadAndDisplayFlight(path, previewMap);
-                
-              //     // Initialiser la carte
-              //     const map = L.map(previewMap.querySelector('#map')).setView([45.5, 6.5], 9);
-              //     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              //         attribution: '© OpenStreetMap contributors'
-              //     }).addTo(map);
-              //    previewMap.map = map;
-              
-              // // Invalider la taille de la carte
-              // setTimeout(() => {
-              //     map.invalidateSize();
-              // }, 100);
-              
-            }
-            }, { once: true });
-
-            mapModal.show();            
-            console.log('Index de la ligne:', rowIndex);
-            console.log('Chemin du fichier:', path);          
+                  previewMap.initMap(); // Appelle la méthode qui initialise la carte      
+                  previewMap.displayTrack(track.data.GeoJSON);            ;              
+                }   
+              }, { once: true });
+              mapModal.show(); 
+          }                  
         }
       });
     // example from https://datatables.net/examples/ajax/null_data_source.html
