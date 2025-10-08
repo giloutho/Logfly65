@@ -1,3 +1,5 @@
+import "./map-preview.js";
+
 class ImpTable extends HTMLElement {
 // import DataTable from 'datatables.net-bs5';
 // import 'datatables.net-bs5/css/dataTables.bootstrap5.min.css';
@@ -46,14 +48,14 @@ class ImpTable extends HTMLElement {
                 </div>  
                 <!-- Modal -->
                 <div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
+                    <div class="modal-dialog modal-lg modal-fullscreen">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="mapModalLabel">${this.gettext('Flight preview')}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
-                            <div class="modal-body">
-                                <div id="preview-map" style="height: 400px;"></div>
+                            <div class="modal-body" style="height:400px; min-height:400px;">
+                                <map-preview></map-preview>
                             </div>
                         </div>
                     </div>
@@ -220,6 +222,30 @@ class ImpTable extends HTMLElement {
             const path = rowData.path;
             // Initialise et affiche la modale
             const mapModal = new bootstrap.Modal(this.querySelector('#mapModal'));
+
+            // Attendre que la modale soit complètement ouverte
+            mapModal._element.addEventListener('shown.bs.modal', () => {
+                const previewMap = this.querySelector('map-preview');
+                if (previewMap) {
+                  previewMap.showMap(); // Appelle la méthode qui initialise la carte                  
+                    // Appeler une fonction pour charger et afficher le fichier IGC
+                   // this.loadAndDisplayFlight(path, previewMap);
+                
+              //     // Initialiser la carte
+              //     const map = L.map(previewMap.querySelector('#map')).setView([45.5, 6.5], 9);
+              //     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              //         attribution: '© OpenStreetMap contributors'
+              //     }).addTo(map);
+              //    previewMap.map = map;
+              
+              // // Invalider la taille de la carte
+              // setTimeout(() => {
+              //     map.invalidateSize();
+              // }, 100);
+              
+            }
+            }, { once: true });
+
             mapModal.show();            
             console.log('Index de la ligne:', rowIndex);
             console.log('Chemin du fichier:', path);          
