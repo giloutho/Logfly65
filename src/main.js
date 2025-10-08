@@ -33,6 +33,7 @@ const createWindow = () => {
     height: 768,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      sandbox: false,
     },
   });
   log.initialize();
