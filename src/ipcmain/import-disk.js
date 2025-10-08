@@ -6,6 +6,7 @@
 const {ipcMain} = require('electron')
 const path = require('node:path');
 const fs = require('node:fs');
+const { dialog } = require('electron');
 const readline = require('node:readline');
 const readLastLines = require('read-last-lines');
 const dbCore = require('./db-core');
@@ -15,23 +16,26 @@ const trigo = require('../js/trigo.js')
 
 ipcMain.handle('gps:impdisk', async (event, args) => {
     result = [];
-    try {
-        // Chronométrage
-        //   let start = performance.now();
-        let igcFiles = searchIgc(args.importPath);
-        if (igcFiles.length > 0) {
-            console.log(`Found ${igcFiles.length} IGC files in ${args.importPath}`);
-            const resultScan = await scanIGCFiles(igcFiles);
-            // let timeTaken = performance.now()-start;
-            // console.log(`scanIGCFiles took ${timeTaken} milliseconds`);
-            return { success: true, result };
-        } else {
-            return { success: false, message: `No track files found in ${args.importPath}`}
+    // Chronométrage
+    //   let start = performance.now();
+    const validFolder = await validfolder(args.importPath);
+    if  (validFolder != null) {
+        try {
+        let igcFiles = searchIgc(validFolder);
+            if (igcFiles.length > 0) {
+                console.log(`Found ${igcFiles.length} IGC files in ${args.importPath}`);
+                const resultScan = await scanIGCFiles(igcFiles);
+                // let timeTaken = performance.now()-start;
+                // console.log(`scanIGCFiles took ${timeTaken} milliseconds`);
+                return { success: true, result };
+            } else {
+                return { success: false, message: `No track files found in ${args.importPath}`}
+            }
+        } catch (error) {
+            console.log('Error opening database:', error);
+            return { success: false, message: `Error in import-disk.js: ${error.message}` };
         }
-    } catch (error) {
-        console.log('Error opening database:', error);
-        return { success: false, message: `Error in import-disk.js: ${error.message}` };
-    }
+    }    
 })
 
 function searchIgc(importPath) {
@@ -269,4 +273,17 @@ function parseLatitude(dd, mm, mmm, ns) {
 function parseLongitude(ddd, mm, mmm, ew) {
     let degrees = parseInt(ddd, 10) + parseFloat(`${mm}.${mmm}`) / 60;
     return (ew === 'W') ? -degrees : degrees;
+}
+
+async function validfolder(importPath){
+    const result = await dialog.showOpenDialog({
+        title: "Valider le dossier de traces",
+        defaultPath: importPath,
+        buttonLabel: "Confirmation requise",
+        properties: ['openDirectory']
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+        return null;
+    }
+    return result.filePaths[0]; // Chemin du dossier sélectionné
 }
