@@ -1,13 +1,10 @@
-const {ipcMain} = require('electron');
 const IGCParser = require('igc-parser');   // https://github.com/Turbo87/igc-parser
 const smooth = require('array-smooth');
 const trigo = require('../js/trigo.js'); 
 const offset = require('../js/offset-utc.js')
 const turfbbox = require('@turf/bbox').default
 
-ipcMain.handle('igc:decoding', async (event, args) => {
-    console.log('[igc-decoding] called ');
-    const { strIgc } = args;
+function IgcDecoding(strIgc) { 
     // In some cases, the A record may be missing
     // bug introduced in V4 with merged flights
     if (strIgc.substring(0, 1) === 'A') {
@@ -20,15 +17,14 @@ ipcMain.handle('igc:decoding', async (event, args) => {
         const track = new IGCDecoder(strIgc)
 	    track.parse(true, true)      	
         if (track.fixes.length> 0) {
-            console.log('[igc-decoding] IGC parsing successful '+track.fixes.length+' points');
             return{ success: true,  data : track}; 
         } else {
             return { success: false, message: 'IGC parsing failed' };   
       }           
     } else {
         return { success: false, message: 'A record is missing' };         
-    }    
-})
+    }   
+}
 
 class IGCDecoder {
 
@@ -274,3 +270,5 @@ class IGCDecoder {
   }
 
 }
+
+module.exports.IgcDecoding = IgcDecoding;
