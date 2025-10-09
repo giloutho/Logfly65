@@ -7,7 +7,8 @@ module.exports = {
     asar: true,
     // Ajoute cette ligne pour inclure le dossier lang
     extraResource: [
-      path.resolve(__dirname, 'lang')
+      path.resolve(__dirname, 'lang'),
+      path.resolve(__dirname, 'bin_ext'),
     ],    
   },
   rebuildConfig: {},
