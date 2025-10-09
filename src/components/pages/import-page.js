@@ -113,7 +113,8 @@ export class ImportPage extends HTMLElement {
         if (el) {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
-                alert('Serial call : '+opt.type)
+                this.callSerialGps(opt.type, opt.lib);
+
             });
         }
     });              
@@ -172,13 +173,71 @@ export class ImportPage extends HTMLElement {
             }        
     }
 
-  async callUsbGps(typeGps, libGps) {
-    this.displayStatus(`${this.gettext('Search')} ${libGps}`, true);
-    try {
-        const params = {
-            invoketype: 'gps:usb',
-            args: {
-                typeGps: typeGps
+    async callSerialGps(typeGps, libGps) {     
+        let specOs = await window.electronAPI.storeGet('specOS');  
+         console.log('Serial call : '+libGps+' '+specOs);   
+        this.displayStatus(`${this.gettext('Search')} ${libGps}`, true);   
+        try {
+            const result = await window.electronAPI.invoke({ invoketype: 'gps:serial' });
+            if (result.success && Array.isArray(result.portsarray)) {
+                if (result.portsarray.length === 0) {
+                    this.displayStatus(this.gettext('No usable serial port detected'), false);
+                } else {
+                    const ports = result.portsarray.slice().reverse();
+                    for (let i = 0; i < ports.length; i++) {
+                        const port = ports[i];
+                        const gpsReq =  {
+                            'chip': port.manufacturer,
+                            'model': typeGps,
+                            'port': port.path
+                        }
+                        const msg = `${libGps} ...    ${this.gettext('attempt to read on ' + port.path)}&nbsp; &nbsp; &nbsp;<span class="spinner-border spinner-border-sm text-danger" role="status" aria-hidden="true"></span>`;
+                        this.displayStatus(msg, true);
+                        //await new Promise(resolve => setTimeout(resolve, 3000)); // Attente de 3 secondes
+                        const params = {
+                            invoketype: 'gpsdump:list',
+                            args: {
+                                gpsModel : gpsReq
+                            }
+                        }    
+                        const resultSerial = await window.electronAPI.invoke(params);
+                        console.log('resultSerial.flights.length: ' + resultSerial.flights.length);
+                        console.log('Flight 0 : ' + resultSerial.flights[0].date + ' ' + resultSerial.flights[0].duration);
+                        break; // on arrête après le premier port testé
+
+                    }
+                    this.displayStatus('Terminé...', true);
+                    // const params = {
+                    //     invoketype: 'gpsdump:list',
+                    //     args: {
+                    //         portsarray : result.portsarray
+                    //     }
+                    // }            
+                    // const resultSerial = await window.electronAPI.invoke(params);
+                    // if (resultSerial.success && Array.isArray(resultSerial.flights)) {
+                    //       console.log(`[ImpPage] Serial GPS detection successful`);
+                    //     //console.log(`[ImpPage] Serial GPS detection successful: ${resultSerial.flights.length} flights found.`);
+                    // } else {
+                    //     const errMsg = resultSerial.message || this.gettext('Error during serial GPS detection');
+                    //     this.displayStatus(errMsg, false);
+                    // }
+                }
+            } else {
+                const errMsg = result.message || this.gettext('Unable to retrieve serial ports');
+                this.displayStatus(errMsg, false);
+            }
+        } catch (error) {
+            this.displayStatus(error.message, false);
+        }
+    }
+
+    async callUsbGps(typeGps, libGps) {
+        this.displayStatus(`${this.gettext('Search')} ${libGps}`, true);
+        try {
+            const params = {
+                invoketype: 'gps:usb',
+                args: {
+                    typeGps: typeGps
             }
         }            
         const resultUsb = await window.electronAPI.invoke(params);
@@ -295,7 +354,7 @@ export class ImportPage extends HTMLElement {
       if (updateDisplay) {
           statusElement.innerHTML = message;
       } else {
-          statusElement.innerHTML = textElement + message;
+          statusElement.innerHTML = textElement + '&nbsp;&nbsp;&nbsp;&nbsp;' + message;
       }
       statusElement.classList.remove('d-none');        
   }  
