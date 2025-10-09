@@ -14,6 +14,9 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const log = require('electron-log/main');
+const Store = require('electron-store').default;
+const store = new Store();
+const settings = require('./js/app-settings.js');
 
 let langjson
 
@@ -40,8 +43,8 @@ const createWindow = () => {
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  console.log('Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);
-
+  console.log('Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);  
+  const startOk = settings.checkSettings(store)
   loadMainProcesses()
   loadLanguage();
   // Open the DevTools.
