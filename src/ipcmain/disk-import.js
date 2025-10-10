@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const { dialog } = require('electron');
 const readline = require('node:readline');
 const readLastLines = require('read-last-lines');
-const dbCore = require('./db-core');
+const dbCore = require('./db-core.js');
 const offset = require('../js/offset-utc.js')
 const trigo = require('../js/trigo.js')
 

@@ -6,11 +6,11 @@ const {ipcMain} = require('electron')
 const path = require('node:path');
 const fs = require('node:fs');
 const log = require('electron-log/main');
-const dbCore = require('./db-core');
-const { callPgearthAPI } = require('./api-access');
+const dbCore = require('./db-core.js');
+const { callPgearthAPI } = require('./api-access.js');
 const trigo = require('../js/trigo.js')
 
-ipcMain.handle('db:addflight', async (event, args) => {
+ipcMain.handle('add:usb', async (event, args) => {
     const flightData = args.flightData;
     const strRename = args.strRename;
     // Mise en forme des champs requis pour l'insertion
