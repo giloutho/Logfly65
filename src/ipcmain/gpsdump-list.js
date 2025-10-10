@@ -2,7 +2,8 @@ const {app, ipcMain, BrowserWindow} = require('electron')
 const process = require('process')
 const path = require('path')
 const fs = require('fs')
-var log = require('electron-log')
+const log = require('electron-log')
+const dbCore = require('./db-core');
 const gpsDumpFiles = require('../js/gpsdump-settings.js')
 const gpsDumpParams = gpsDumpFiles.getParam()
 const Store = require('electron-store').default;
@@ -122,27 +123,28 @@ ipcMain.handle('gpsdump:list', async (event, args) => {
         if (data) {
             switch (modelGPS) {
                 case 'flysd':
-                   flightlistFlymaster(data,modelGPS,paramGPS,paramPort)      
+                   await flightlistFlymaster(data,modelGPS,paramGPS,paramPort)   
+                   console.log('After await flightlistFlymaster')   
                     break
                 case 'flyold':
-                    flightlistFlymaster(data,modelGPS,paramGPS,paramPort)           
+                    await flightlistFlymaster(data,modelGPS,paramGPS,paramPort)           
                     break                
                 case 'fly20':
                     // For Compeo/Compeo+/Galileo/Competino/Flytec 5020,5030,6030
                     // same decoding process          
-                    flightlistFlymaster(data,modelGPS,paramGPS,paramPort)                            
+                    await flightlistFlymaster(data,modelGPS,paramGPS,paramPort)                            
                     break      
                 case 'fly15':
                     switch (specOS) {
                         case 'win':
-                            flightlistFlymaster(data,modelGPS,paramGPS,paramPort)
+                            await flightlistFlymaster(data,modelGPS,paramGPS,paramPort)
                             break
                         case 'mac32':
                             // A vérifier
-                            flightlistFlymaster(data,modelGPS,paramGPS,paramPort)
-                            break            
+                            await flightlistFlymaster(data,modelGPS,paramGPS,paramPort)
+                            break
                         case 'mac64':
-                            flightlistFlytec(data,modelGPS,paramGPS,paramPort) 
+                            await flightlistFlytec(data,modelGPS,paramGPS,paramPort) 
                             break
                         case 'linux':
                             flightlistFlytec(data,modelGPS,paramGPS,paramPort) 
@@ -163,28 +165,12 @@ ipcMain.handle('gpsdump:list', async (event, args) => {
     return flightList
 })
 
-// for debugging purposes
-function decodingTest() {
-  try {
-    const data = fs.readFileSync(testPath, 'utf8')
-    if (data) {
-      flightlistDecoding(data)
-    } else {
-      flightList.error = true
-      flightList.otherlines.push('no response from GPSDump for '+gpsDumpPath)
-    }
-  } catch (error) {
-    flightList.error = true
-    flightList.otherlines.push('testDecodage failed')    
-  }
-}
-
 // Flymaster and Flytec 6020/6030 decoding
 // data begin with something like this
 //    Product: Flymaster GpsSD  SN02988  SW2.03h
 //    Track list:
 //    1   23.07.20   06:08:16   01:21:57
-function flightlistFlymaster(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
+async function flightlistFlymaster(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
   try {
     let lines = gpsdumpOutput.toString().trim().split('\n')
     console.log('flightlistFlymaster called with '+lines.length+' lines')
@@ -214,10 +200,8 @@ function flightlistFlymaster(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
     }
     if (flightList.manufacturer != null) {
       if (flightList.flights.length > 0) {
-// Recherche à faire dans la db        
-// let flightListChecked = dblog.checkFlightList(flightList) 
-// flightList = flightListChecked
-                     
+        // Recherche des vols non enregistrés dans la db
+        const flightListChecked = await checkFlightList(flightList);
       } else {
         flightList.error = true
         flightList.otherlines.push('No flights listed by GPSDump')         
@@ -236,7 +220,7 @@ function flightlistFlymaster(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
 //     Line 2 6015, SW 1.3.07, S/N 1068
 //     Line 3 Track list:
 //     Line 4      1; 21.06.25; 14:38:50;        1; 00:17:45;  
-function flightlistFlytec(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
+async function flightlistFlytec(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
   try {
     let lines = gpsdumpOutput.toString().trim().split('\n')
     if (lines.length > 0) {
@@ -373,4 +357,64 @@ function winDecoding(rawLines, gpsdumpOrder) {
       }
     }
   }
+}
+
+/**
+ * From xLogfly V4 and new offset computation, it's not possible to compare takeoff hours
+ * on GPS flight list, it's UTC time for Flymaster and local time in Flytec. Flights are stored in db in local time
+ * Seach is now based on minutes of take off and flight duration... a bit far-fetched !
+ */
+async function checkFlightList(flightList) {  
+  console.log('checkFlightList called with '+flightList.flights.length+' flights')
+  let regexMinSec = /:([0-5][0-9]):([0-5][0-9])/  
+  flightList.flights.forEach(flight => {
+    let arrDate = flight['date'].split('.')
+    if (arrDate.length === 3) {
+      let strDate =  '20'+arrDate[2]+'-'+arrDate[1]+'-'+arrDate[0]
+      arrTakeoff = flight['takeoff'].split(':')
+      if (arrTakeoff.length === 3) {
+        let takeoffMinSeconds = (parseInt(arrTakeoff[1])*60)+parseInt(arrTakeoff[2])
+        arrDuration = flight['duration'].split(':')
+        if (arrDuration.length > 2) {
+          // this was gpsTotalSec in Rech_Vol_by_Duree of dbSearch.java 
+          gpsDurationSeconds = (parseInt(arrDuration[0])*3600)+(parseInt(arrDuration[1])*60)+parseInt(arrDuration[2])
+          let dateStart = strDate+' 00:00:00'
+          let dateEnd = strDate+' 23:59:59'
+          const reqSQL = `SELECT V_Date,V_Duree FROM Vol WHERE V_Date >= '${dateStart}' and V_Date <= '${dateEnd}'`
+          const flightsOfDay = dbCore.query(reqSQL);
+          for (const fl of flightsOfDay) {
+            let diffSecOK 
+            if (fl.V_Date.match(regexMinSec)) {
+              let dbMinSec = regexMinSec.exec(fl.V_Date)
+              // Minutes and seconds of takeoff time are converted to seconds
+              let dbMinSeconds = (parseInt(dbMinSec[1])*60)+parseInt(dbMinSec[2])
+              let diffSeconds = dbMinSeconds - takeoffMinSeconds;                
+              // We can't compare LocalDateTime : in db this is local time, in GPS, this is depending of user settings -> unreliable 
+              // We compute only with minute and seconds components. If hour change -> we compare 01:59 to 02:01
+              // In Flytec 6015 and 6030, GPS start time displayed and track start point are not the same values. (few minutes)
+              // We consider an offset of 5 mn (300 s)
+              if (diffSeconds > 300) {
+                diffSeconds = 3600 - diffSeconds;
+                if (diffSeconds < 360)
+                    diffSecOK = true;
+                else
+                    diffSecOK = false;
+              } else {
+                  diffSecOK = true;
+              }
+              let dbDuration = parseInt(fl.V_Duree)
+              let totalSec = gpsDurationSeconds - diffSeconds
+              if (Math.abs(totalSec - dbDuration) < 180 && diffSecOK) {
+                flight['new'] = false
+                // iteration is stopped
+                break;
+              }                
+            }              
+          }
+          // database checking is complete                   
+        }          
+      }
+    }             
+  });  
+
 }
