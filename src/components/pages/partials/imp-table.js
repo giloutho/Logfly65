@@ -110,7 +110,7 @@ class ImpTable extends HTMLElement {
         }
         const updateBtn = this.querySelector('#bt-update');
         if (updateBtn) {
-            updateBtn.addEventListener('click', () => this.updateLogbook());
+            updateBtn.addEventListener('click', () => this.updateLogbookUsb());
         }
     }
 
@@ -133,12 +133,12 @@ class ImpTable extends HTMLElement {
         const unselectBtn = this.querySelector('#bt-unselect');
         if (unselectBtn) {
             unselectBtn.addEventListener('click', () => {
-                this.uncheckTable();
+                this.uncheckTable();s
             });
         }
         const updateBtn = this.querySelector('#bt-update');
         if (updateBtn) {
-            updateBtn.addEventListener('click', () => this.updateLogbook());
+            updateBtn.addEventListener('click', () => this.updateLogbookSerial());
         }
     }    
  
@@ -507,7 +507,7 @@ class ImpTable extends HTMLElement {
     }
   }
 
-  async updateLogbook() {
+  async updateLogbookUsb() {
       const updateBtn = this.querySelector('#bt-update');
       if (updateBtn) {
         updateBtn.disabled = true;
@@ -526,17 +526,31 @@ class ImpTable extends HTMLElement {
       // Boucle asynchrone séquentielle
       for (const element of data) {
         try {
-            const params = {
-                invoketype: 'add:usb',
+            const newElement = { ...element };
+            const igcPath = {
+                invoketype: 'file:readtext',
                 args: {
-                    flightData : element,
-                    strRename : this.gettext('To rename')
+                    filePath  : element.path,
                 }
-            }            
-            const result = await window.electronAPI.invoke(params);            
-            if (result.success) {
-              nbInserted++;            
-            } 
+            }      
+            const resultIgc = await window.electronAPI.invoke(igcPath);            
+            if (resultIgc.success) {
+              newElement.IgcText = resultIgc.data;
+              console.log('IGC file put in igcText, size '+newElement.IgcText.length+' bytes');
+              const params = {
+                  invoketype: 'add:flight',
+                  args: {
+                      flightData : newElement,
+                      strRename : this.gettext('To rename') // Translation must be done out of main process
+                  }
+              }            
+              const result = await window.electronAPI.invoke(params);            
+              if (result.success) {
+                nbInserted++;            
+              } 
+            } else {
+              console.log('Error reading igc file '+element.path+' : '+resultIgc.message)
+            }
         } catch (error) {
           // A archiver dans le journal de log
           console.log('Error adding flight: ' + error.message);
