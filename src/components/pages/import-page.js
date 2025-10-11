@@ -183,7 +183,10 @@ export class ImportPage extends HTMLElement {
                 if (result.portsarray.length === 0) {
                     this.displayStatus(this.gettext('No usable serial port detected'), false);
                 } else {
+                    // on examine les ports en commençant par le dernier détecté
+                    // il y a beaucoup de chances pour que ce soit le port du GPS
                     const ports = result.portsarray.slice().reverse();
+                    let resultSerial = null;
                     for (let i = 0; i < ports.length; i++) {
                         const port = ports[i];
                         const gpsReq =  {
@@ -200,27 +203,33 @@ export class ImportPage extends HTMLElement {
                                 gpsModel : gpsReq
                             }
                         }    
-                        const resultSerial = await window.electronAPI.invoke(params);
-                        console.log('resultSerial.flights.length: ' + resultSerial.flights.length);
-                        console.log('Flight 0 : ' + resultSerial.flights[0].date + ' ' + resultSerial.flights[0].duration);
-                        break; // on arrête après le premier port testé
-
+                        resultSerial = await window.electronAPI.invoke(params);
+                        // console.log('resultSerial.flights.length: ' + resultSerial.flights.length);
+                        // console.log('Flight 0 : ' + resultSerial.flights[0].date + ' ' + resultSerial.flights[0].duration);
+                        if (resultSerial.flights && resultSerial.flights.length > 0) {
+                            break; // On sort dès qu'on a trouvé une liste de vols
+                        }
                     }
                     this.displayStatus('Terminé...', true);
-                    // const params = {
-                    //     invoketype: 'gpsdump:list',
-                    //     args: {
-                    //         portsarray : result.portsarray
-                    //     }
-                    // }            
-                    // const resultSerial = await window.electronAPI.invoke(params);
-                    // if (resultSerial.success && Array.isArray(resultSerial.flights)) {
-                    //       console.log(`[ImpPage] Serial GPS detection successful`);
-                    //     //console.log(`[ImpPage] Serial GPS detection successful: ${resultSerial.flights.length} flights found.`);
-                    // } else {
-                    //     const errMsg = resultSerial.message || this.gettext('Error during serial GPS detection');
-                    //     this.displayStatus(errMsg, false);
-                    // }
+                    if (resultSerial && resultSerial.flights && resultSerial.flights.length > 0) {
+                        const importData = {
+                            typeGps: typeGps,
+                            libGps: libGps,
+                            flights: resultSerial.flights
+                        };
+                        this.querySelector('#status').classList.add('d-none');
+                        const impTable = this.querySelector('imp-table');
+                        if (impTable) {
+                            impTable.classList.remove('d-none');
+                        }
+                        this.dispatchEvent(new CustomEvent('serial-import', {
+                            detail: { importData: importData },
+                            bubbles: true,
+                            composed: true
+                        }));
+                    } else {
+                        this.displayStatus(this.gettext('No flights found on the ports list'), true);
+                    }
                 }
             } else {
                 const errMsg = result.message || this.gettext('Unable to retrieve serial ports');
@@ -257,11 +266,6 @@ export class ImportPage extends HTMLElement {
         //       this.displayStatus(`&nbsp; &nbsp; &nbsp; ${this.gettext('Import error')} : ${resImport.message}`, false);                    
         //   }           
             if (resImport.success) {
-                // Calcule le nom de vol à importer  toInsert = true
-                let totInsert = 0;
-                for (const flight of resImport.result) {
-                    if (flight.toInsert == true) totInsert++;
-                }
                 console.log(`[ImpPage] Import successful: ${resImport.result.length} flights imported.`);
                 // Envoi des données à ImpTable
                 const importData = {
@@ -274,7 +278,7 @@ export class ImportPage extends HTMLElement {
                 if (impTable) {
                     impTable.classList.remove('d-none');
                 }
-                this.dispatchEvent(new CustomEvent('flights-import', {
+                this.dispatchEvent(new CustomEvent('usb-import', {
                     detail: { importData: importData },
                     bubbles: true, // pour permettre la remontée dans le DOM
                     composed: true // pour traverser le shadow DOM si besoin
