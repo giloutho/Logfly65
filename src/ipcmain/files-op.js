@@ -23,9 +23,9 @@ ipcMain.handle('dialog:openfile', async (event,args) => {
     return result;
 });
 
-ipcMain.handle('file:read', async (event, args) => {
-    const { fileName } = args;
-    const filePath =path.join(app.getPath("documents"), 'Logfly', fileName);
+ipcMain.handle('file:readtext', async (event, args) => {
+    const { filePath } = args;
+    console.log('filePath reçu dans file:readtext :', filePath);
     const result = await fs.promises.readFile(filePath, 'utf-8');
     if (!result) {
         return { success: false, message: 'File not found or empty' };

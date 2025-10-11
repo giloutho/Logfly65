@@ -10,9 +10,10 @@ const dbCore = require('./db-core.js');
 const { callPgearthAPI } = require('./api-access.js');
 const trigo = require('../js/trigo.js')
 
-ipcMain.handle('add:usb', async (event, args) => {
+ipcMain.handle('add:flight', async (event, args) => {
     const flightData = args.flightData;
     const strRename = args.strRename;
+    const igcText = args.flightData.IgcText;
     // Mise en forme des champs requis pour l'insertion
     const pDate = `${flightData.date} ${flightData.startTime}`;  // INSERT INTO Vol (V_Date
     const pDuree = flightData.duration;  //V_Duree
@@ -26,68 +27,59 @@ ipcMain.handle('add:usb', async (event, args) => {
     const pAltDeco = flightData.altitude;  // V_AltDeco
     const pUTC = flightData.offsetUTC;  // UTC
     const pEngin = flightData.glider;   // V_Engin 
-    // Lecture du fichier IGC
-    let pIGC = null; 
     let pSite = null
     let pPays = null     
     try {
-        pIGC = await readIGCFile({ filePath: flightData.path });
-        if (pIGC.success) {
-            // recherche du site de décollage       
-            let searchSite = await searchSiteInDb(pLatDeco, pLongDeco);
-            if (searchSite != null && searchSite != '') {
-                console.log(pDate,' site from db ',searchSite)
-                let fullSite = searchSite.split('*')
-                if (fullSite.length > 0) {
-                    pSite = fullSite[0]
-                    pPays = fullSite[1]
-                } else {
-                    pSite = fullSite
-                    pPays = '***'
-                }
+        // recherche du site de décollage       
+        let searchSite = await searchSiteInDb(pLatDeco, pLongDeco);
+        if (searchSite != null && searchSite != '') {
+            console.log(pDate,' site from db ',searchSite)
+            let fullSite = searchSite.split('*')
+            if (fullSite.length > 0) {
+                pSite = fullSite[0]
+                pPays = fullSite[1]
             } else {
-                // Création du site correspondant au décollage
-                // provenance : Paragliding Earth ou ajout d'un site à renommer
-                const dbAddSite = await addNewSite(pLatDeco, pLongDeco, pAltDeco, strRename);
-                if (dbAddSite.success) {
-                    log.info('Flight ', pDate, ' add site with addNewSite ', dbAddSite.newFlightSite.name)
-                    pSite = dbAddSite.newFlightSite.name;
-                    pPays = dbAddSite.newFlightSite.pays;
-                } else {
-                    log.error(`\n-> Erreur lors de l'ajout du site : ${dbAddSite.message}`);
-                    pSite = 'Unable to create new site';
-                    pPays = '***';
-                }                
-            }    
-            // Préparartion des paramètres pour l'insertion         
-            const sqltable = 'Vol';
-            const sqlparams = {
-                V_Date: pDate,
-                V_Duree: pDuree,
-                V_sDuree: pSduree,
-                V_LatDeco: pLatDeco,
-                V_LongDeco: pLongDeco,
-                V_AltDeco: pAltDeco,
-                V_Site: pSite,
-                V_Pays: pPays,
-                V_IGC: pIGC.data,
-                UTC: pUTC,
-                V_Engin: pEngin
-            }
-            //console.log(`${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.V_LatDeco} ${sqlparams.V_LongDeco} ${sqlparams.UTC} ${sqlparams.V_Engin} ${sqlparams.V_Site} ${sqlparams.V_Pays}`);
-            const dbAddFlight = await dbCore.insert(sqltable, sqlparams);
-            if (dbAddFlight.changes === 0) {
-                log.error(`Insertion error for flight : ${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.UTC} ${sqlparams.V_Site}`);
-                throw new Error('Flight not inserted');
-            } else {
-                return { success: true, message: 'Flight added successfully' };
+                pSite = fullSite
+                pPays = '***'
             }
         } else {
-            const errMsg = 'Error reading IGC file' + ' : ' + pIGC.message;
-            return { success: false, message: errMsg };            
+            // Création du site correspondant au décollage
+            // provenance : Paragliding Earth ou ajout d'un site à renommer
+            const dbAddSite = await addNewSite(pLatDeco, pLongDeco, pAltDeco, strRename);
+            if (dbAddSite.success) {
+                log.info('Flight ', pDate, ' add site with addNewSite ', dbAddSite.newFlightSite.name)
+                pSite = dbAddSite.newFlightSite.name;
+                pPays = dbAddSite.newFlightSite.pays;
+            } else {
+                log.error(`\n-> Erreur lors de l'ajout du site : ${dbAddSite.message}`);
+                pSite = 'Unable to create new site';
+                pPays = '***';
+            }                
+        }    
+        // Préparartion des paramètres pour l'insertion         
+        const sqltable = 'Vol';
+        const sqlparams = {
+            V_Date: pDate,
+            V_Duree: pDuree,
+            V_sDuree: pSduree,
+            V_LatDeco: pLatDeco,
+            V_LongDeco: pLongDeco,
+            V_AltDeco: pAltDeco,
+            V_Site: pSite,
+            V_Pays: pPays,
+            V_IGC: igcText,
+            UTC: pUTC,
+            V_Engin: pEngin
+        }
+        //console.log(`${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.V_LatDeco} ${sqlparams.V_LongDeco} ${sqlparams.UTC} ${sqlparams.V_Engin} ${sqlparams.V_Site} ${sqlparams.V_Pays}`);
+        const dbAddFlight = await dbCore.insert(sqltable, sqlparams);
+        if (dbAddFlight.changes === 0) {
+            log.error(`Insertion error for flight : ${sqlparams.V_Date} ${sqlparams.V_sDuree} ${sqlparams.UTC} ${sqlparams.V_Site}`);
+            throw new Error('Flight not inserted');
+        } else {
+            return { success: true, message: 'Flight added successfully' };
         }
     } catch (err) {
-        pIGC = null;
         const errMsg = 'Error in dbAddFlight' + ' : ' + err.message;
         return { success: false, message: errMsg };
     }
