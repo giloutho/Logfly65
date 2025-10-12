@@ -404,45 +404,40 @@ class ImpTable extends HTMLElement {
             // Met à jour la propriété toInsert selon l'état de la checkbox
             dtRow.toInsert = target.checked;
             this.updateInsertCountStatus();
-            // Récupère les données de la ligne (selon ta logique DataTable)
-            // Exemple si tu utilises DataTable :
-            // let dtRow = this.dataTableInstance.row(row).data();
-            // console.log('rowindex', rowIndex);
-            // const igcString = dtRow.igcFile;
-            // displayOneFlight(igcString, 9999);
-
-            // Si tu utilises un tableau flights :
-            // const igcString = flights[rowIndex].igcFile;
-            // displayOneFlight(igcString, 9999);
-
-            // Adapte selon ta structure de données
         } else if (target.classList.contains('btn-warning')) {  // Si c'est le bouton Map
             const row = target.closest('tr');
-            const rowIndex = Array.from(table.rows).indexOf(row);
             const rowData = this.dataTableInstance.row(row).data();
-            const pathIgc = rowData.path;
-            const params = {
-                invoketype: 'igc:reading',
+            const rowIndex = this.dataTableInstance.rows().indexes().toArray().find(idx => {
+                return this.dataTableInstance.row(idx).data() === rowData;
+            });
+            const gpsParam = rowData.gpsdump;
+            const igcRequest = {
+                invoketype: 'gpsdump:flight',
                 args: {
-                    igcPath : pathIgc
+                    gpsParam  : gpsParam,
+                    flightIndex: rowIndex,
+                    withGeoJSON: true
                 }
-            }
-            const track = await window.electronAPI.invoke(params);  
-            if (track.success) {
-              if (track.data.GeoJSON) {
-                console.log(track.data.fixes.length+' points in track GeoJSON Ok...');
+            }                
+            const resultIgc = await window.electronAPI.invoke(igcRequest);   
+            if (resultIgc.success) {           
+              console.log('OK... IGC file size '+resultIgc.flightData.IgcText.length+' bytes '+resultIgc.flightData.date);
+              if (resultIgc.flightData.GeoJSON) {
+                console.log(resultIgc.flightData.GeoJSON.features[0].geometry.coordinates.length+' points in track GeoJSON Ok...');
+                // Initialise et affiche la modale
+                const mapModal = new bootstrap.Modal(this.querySelector('#mapModal'));
+                // Attendre que la modale soit complètement ouverte
+                mapModal._element.addEventListener('shown.bs.modal', () => {
+                  const previewMap = this.querySelector('map-preview');
+                  if (previewMap) {
+                    previewMap.initMap(); // Appelle la méthode qui initialise la carte      
+                    previewMap.displayTrack(resultIgc.flightData.GeoJSON);
+                  }
+                }, { once: true });
+                mapModal.show();                 
+              } else {
+                console.log('No GeoJSON track...');
               }
-              // Initialise et affiche la modale
-              const mapModal = new bootstrap.Modal(this.querySelector('#mapModal'));
-              // Attendre que la modale soit complètement ouverte
-              mapModal._element.addEventListener('shown.bs.modal', () => {
-                const previewMap = this.querySelector('map-preview');
-                if (previewMap) {
-                  previewMap.initMap(); // Appelle la méthode qui initialise la carte      
-                  previewMap.displayTrack(track.data.GeoJSON);            ;              
-                }   
-              }, { once: true });
-              mapModal.show(); 
           }                  
         }
       });
@@ -590,17 +585,23 @@ class ImpTable extends HTMLElement {
       // Boucle asynchrone séquentielle
       for (const element of data) {
         try {
-            const newElement = { ...element };
             const igcRequest = {
                 invoketype: 'gpsdump:flight',
                 args: {
                     gpsParam  : element.gpsparam,
-                    flightIndex: element.flightIndex
+                    flightIndex: element.flightIndex,
+                    withGeoJSON: false
                 }
             }                
             const resultIgc = await window.electronAPI.invoke(igcRequest);   
             if (resultIgc.success) {           
               console.log('OK... IGC file size '+resultIgc.flightData.IgcText.length+' bytes '+resultIgc.flightData.date);
+              if (resultIgc.flightData.GeoJSON) {
+                console.log(resultIgc.flightData.GeoJSON.features[0].geometry.coordinates.length+' points in track GeoJSON Ok...');
+              } else {
+                console.log('No GeoJSON track...');
+              }
+              // Ajoute le vol au carnet
               const params = {
                   invoketype: 'add:flight',
                   args: {

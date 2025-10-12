@@ -13,15 +13,15 @@ const { IgcDecoding } = require('./igc-decoder.js');
 ipcMain.handle('gpsdump:flight', async (event, args) => {
     const gpsParam = args.gpsParam
     const flightIndex = args.flightIndex
-    console.log('gpsParam received : '+gpsParam+' flightIndex : '+flightIndex)
-    const resIgc = await getGpsdumpFlight(gpsParam, flightIndex)
+    const withGeoJSON = args.withGeoJSON || false
+    const resIgc = await getGpsdumpFlight(gpsParam, flightIndex, withGeoJSON)
     return resIgc
 })
 
-async function getGpsdumpFlight(gpsParam, flightIndex) {
+async function getGpsdumpFlight(gpsParam, flightIndex, withGeoJSON) {
     // gpsParam contains parameters for GpsDump
     // something like -giq,-cu.usbserial-14140,FlymasterSD (First one is gps type, second serial port)
-    console.log('flightIndex : '+flightIndex+' gpsParam : '+gpsParam)
+    console.log('flightIndex : '+flightIndex+' gpsParam : '+gpsParam+' withGeoJson'+withGeoJSON)
     let data
     const execFileSync = require('child_process').execFileSync
     if (process.env.NODE_ENV !== 'production') {
@@ -105,7 +105,7 @@ async function getGpsdumpFlight(gpsParam, flightIndex) {
       // data has been declared but not not necessarily initialized if the communication fails
       if (data) {
           console.log('GpsDump call ok')
-          const flightDecoding = await validIgc(tempFileName)
+          const flightDecoding = await validIgc(tempFileName, withGeoJSON)
           if (!flightDecoding.success) {
             const errMsg = 'getGpsdumpFlight decoding : '+flightDecoding.message
             log.error(errMsg)
@@ -127,7 +127,7 @@ async function getGpsdumpFlight(gpsParam, flightIndex) {
     }
   }
 
-  async function validIgc(tempFileName) {
+  async function validIgc(tempFileName, withGeoJSON) {
     // lecture du fichier IGC 
     flightData = {}
     const igcText = await fs.promises.readFile(tempFileName, 'utf-8');
@@ -147,6 +147,11 @@ async function getGpsdumpFlight(gpsParam, flightIndex) {
           flightData.glider = result.data.info.gliderType
           flightData.offsetUTC = result.data.info.offsetUTC  // in minutes
           console.log('Pilot '+flightData.pilot+' glider '+flightData.glider+' offsetUTC '+flightData.offsetUTC)
+          if (withGeoJSON) {
+            console.log('Adding GeoJSON track to flightData')
+            flightData.GeoJSON = result.data.GeoJSON
+            console.log(flightData.GeoJSON.features[0].geometry.coordinates.length+' points in track GeoJSON Ok...');
+          }
           /**
            * IMPORTANT : when a date oject is requested from the timestamp, 
            * the time difference is returned with the local configuration of the computer. 
