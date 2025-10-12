@@ -1,4 +1,5 @@
-const {app} = require('electron')
+const {app, ipcMain} = require('electron')
+const process = require('process')
 const path = require('path')
 const fs = require('fs')
 const log = require('electron-log')
@@ -7,11 +8,19 @@ const gpsDumpParams = gpsDumpFiles.getParam()
 const Store = require('electron-store').default;
 const store = new Store()
 const specOS = store.get('specOS')
+const { IgcDecoding } = require('./igc-decoder.js');
 
-function getGpsdumpFlight(gpsParam, flightIndex) {
+ipcMain.handle('gpsdump:flight', async (event, args) => {
+    const gpsParam = args.gpsParam
+    const flightIndex = args.flightIndex
+    console.log('gpsParam received : '+gpsParam+' flightIndex : '+flightIndex)
+    const resIgc = await getGpsdumpFlight(gpsParam, flightIndex)
+    return resIgc
+})
+
+async function getGpsdumpFlight(gpsParam, flightIndex) {
     // gpsParam contains parameters for GpsDump
-    // something like -giq,-cu.usbserial-14140,FlymasterSD
-    // First one is gps type, second serial port
+    // something like -giq,-cu.usbserial-14140,FlymasterSD (First one is gps type, second serial port)
     console.log('flightIndex : '+flightIndex+' gpsParam : '+gpsParam)
     let data
     const execFileSync = require('child_process').execFileSync
@@ -21,6 +30,7 @@ function getGpsdumpFlight(gpsParam, flightIndex) {
         gpsDumpPath = path.join(app.getAppPath(), '../bin_ext',gpsDumpParams[specOS].gpsdump);
     }
     const tempFileName  = path.join(app.getPath('temp'), 'gpsdump.igc')
+    console.log('tempFileName : '+tempFileName)
     if (fs.existsSync(tempFileName)) {
       try {
         fs.unlinkSync(tempFileName)
@@ -92,17 +102,76 @@ function getGpsdumpFlight(gpsParam, flightIndex) {
             // L5 -> new String[]{pathGpsDump,sTypeGps, linuxPort, tempIGC, numberIGC};
             break
       }
- 
       // data has been declared but not not necessarily initialized if the communication fails
       if (data) {
-          res = tempFileName
-      }     
+          console.log('GpsDump call ok')
+          const flightDecoding = await validIgc(tempFileName)
+          if (!flightDecoding.success) {
+            const errMsg = 'getGpsdumpFlight decoding : '+flightDecoding.message
+            log.error(errMsg)
+            return { success: false, message: errMsg };            
+          } 
+          console.log('Flight decoded : '+flightDecoding.flightData.date+' '+flightDecoding.flightData.startTime+' duration '+flightDecoding.flightData.duration+'s'  ) 
+          // Suppression du fichier temporaire
+          try {
+            fs.unlinkSync(tempFileName)
+          } catch(err) {
+            log.error('[getGpsdumpFlight] The gpsDump temporary file was not deleted : '+err)
+          }          
+          return { success: true, flightData: flightDecoding.flightData };
+      }
     } catch (error) {
-      res = 'Error on calling ['+callString+']'
-      log.error(res+' : '+error)
+      const errMsg = 'getGpsdumpFlight : '+error.message      
+      log.error(errMsg)
+      return { success: false, message: errMsg };
     }
-  
-    return res    
   }
 
-  module.exports.getGpsdumpFlight = getGpsdumpFlight
+  async function validIgc(tempFileName) {
+    // lecture du fichier IGC 
+    flightData = {}
+    const igcText = await fs.promises.readFile(tempFileName, 'utf-8');
+    if (!igcText) { return { success: false, message: 'File not found or empty' }; }
+    // Decodage de la trace
+    try {
+        console.log('Appel de igc:decoding');
+        const result = IgcDecoding(igcText);
+        console.log('Retour sur igc:decoding -> ' + result.data.fixes.length + ' points');
+        if (result.data.fixes.length > 2) {
+          flightData.IgcText = igcText
+          flightData.altitude = result.data.fixes[0].gpsAltitude
+          flightData.latitude = result.data.fixes[0].latitude
+          flightData.longitude = result.data.fixes[0].longitude
+          console.log('First point : lat '+flightData.latitude+' lon '+flightData.longitude+' alt '+flightData.altitude)
+          flightData.pilot = result.data.info.pilot
+          flightData.glider = result.data.info.gliderType
+          flightData.offsetUTC = result.data.info.offsetUTC  // in minutes
+          console.log('Pilot '+flightData.pilot+' glider '+flightData.glider+' offsetUTC '+flightData.offsetUTC)
+          /**
+           * IMPORTANT : when a date oject is requested from the timestamp, 
+           * the time difference is returned with the local configuration of the computer. 
+           * So if I take a flight from Argentina in January it will return UTC+1, in July UTC+2.
+           * it's necessary to request an UTC date object 
+           */
+          // offsetUTC is in minutes, original timestamp in milliseconds
+          const startLocalTimestamp = result.data.fixes[0].timestamp + (flightData.offsetUTC*60000)
+          const isoLocalStart = new Date(startLocalTimestamp).toISOString()
+          const dateLocal = new Date(isoLocalStart.slice(0, -1))
+          const dateStart = dateLocal
+          console.log('Local start : '+dateLocal.toISOString()+' offsetUTC '+flightData.offsetUTC)
+          // format must be -> YYYY-MM-DD          
+          flightData.date = dateLocal.getFullYear()+'-'+String((dateLocal.getMonth()+1)).padStart(2, '0')+'-'+String(dateLocal.getDate()).padStart(2, '0')
+          flightData.startTime = String(dateLocal.getHours()).padStart(2, '0')+':'+String(dateLocal.getMinutes()).padStart(2, '0')+':'+String(dateLocal.getSeconds()).padStart(2, '0')  
+          console.log('Flight date '+flightData.date+' startTime '+flightData.startTime)
+          const isoLocalEnd = new Date(result.data.fixes[result.data.fixes.length - 1].timestamp+(flightData.offsetUTC*60000)).toISOString()
+          const dateEnd = new Date(isoLocalEnd.slice(0, -1))
+          flightData.duration = (dateEnd.getTime() - dateStart.getTime()) / 1000
+          console.log('validIgc success '+flightData.IgcText.length+' bytes '+flightData.date+' '+flightData.startTime+' duration '+flightData.duration+'s')
+          return { success: true, flightData: flightData };
+        } 
+    } catch (error) {
+        return { success: false, message: error.message };
+    }    
+
+      return { success: true, data: igcText };
+  }

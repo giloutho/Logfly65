@@ -133,7 +133,7 @@ class ImpTable extends HTMLElement {
         const unselectBtn = this.querySelector('#bt-unselect');
         if (unselectBtn) {
             unselectBtn.addEventListener('click', () => {
-                this.uncheckTable();s
+                this.uncheckTable();
             });
         }
         const updateBtn = this.querySelector('#bt-update');
@@ -328,9 +328,9 @@ class ImpTable extends HTMLElement {
                         return '<input type="checkbox" name="chkbx" class="editor-active" checked >';
                       } else {
                         //   return '<input type="checkbox" class="editor-active">';
-                        return '<img src="../../assets/img/in_logbook.png" alt=""></img>';
+                        return '<img src="./static/images/in_logbook.png" alt=""></img>';
                       }
-              return data;
+                return data;
             },
             className: "dt-body-center text-center"
           },      
@@ -536,7 +536,6 @@ class ImpTable extends HTMLElement {
             const resultIgc = await window.electronAPI.invoke(igcPath);            
             if (resultIgc.success) {
               newElement.IgcText = resultIgc.data;
-              console.log('IGC file put in igcText, size '+newElement.IgcText.length+' bytes');
               const params = {
                   invoketype: 'add:flight',
                   args: {
@@ -565,6 +564,72 @@ class ImpTable extends HTMLElement {
       }
       if (divTable) divTable.style.display = 'none';
     }
+
+  async updateLogbookSerial() {
+      const updateBtn = this.querySelector('#bt-update');
+      if (updateBtn) {
+        updateBtn.disabled = true;
+        // Affiche un symbole d'attente
+        updateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + this.gettext('Logbook update');
+      }    
+      let data = [];
+      let nbToInsert = 0;
+      this.dataTableInstance.rows().data().toArray().forEach(row => {
+        if (row.toInsert === true) {
+          let reqline = {};
+          reqline['gpsparam'] = row.gpsdump;
+          const rowIndex = this.dataTableInstance.rows().indexes().toArray().find(idx => {
+              return this.dataTableInstance.row(idx).data() === row;
+          });
+          reqline['flightIndex'] = rowIndex;
+          data.push(reqline);
+          nbToInsert++;
+        }
+      });
+      let nbInserted = 0;
+      // Boucle asynchrone séquentielle
+      for (const element of data) {
+        try {
+            const newElement = { ...element };
+            const igcRequest = {
+                invoketype: 'gpsdump:flight',
+                args: {
+                    gpsParam  : element.gpsparam,
+                    flightIndex: element.flightIndex
+                }
+            }                
+            const resultIgc = await window.electronAPI.invoke(igcRequest);   
+            if (resultIgc.success) {           
+              console.log('OK... IGC file size '+resultIgc.flightData.IgcText.length+' bytes '+resultIgc.flightData.date);
+              const params = {
+                  invoketype: 'add:flight',
+                  args: {
+                      flightData : resultIgc.flightData,
+                      strRename : this.gettext('To rename') // Translation must be done out of main process
+                  }
+              }            
+              const result = await window.electronAPI.invoke(params);            
+              if (result.success) {
+                nbInserted++;   
+                updateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + this.gettext('Logbook update')+` (${nbInserted} / ${nbToInsert})`;         
+              } 
+            } else {
+              console.log('Error reading/decoding igc file : '+resultIgc.message)
+            }
+        } catch (error) {
+          // A archiver dans le journal de log
+          console.log('Error adding flight: ' + error.message);
+        }
+      }
+      // On fera un alert et un retour au carnet comme dans L6
+      this.displayStatus(this.currentGpsLib+' : '+nbInserted+' / '+nbToInsert+' '+this.gettext('flights inserted'), 'success');
+      const divTable = this.querySelector('#div_table');
+      // Vider la table et masquer le div
+      if (this.dataTableInstance) {
+        this.dataTableInstance.clear().draw();
+      }
+      if (divTable) divTable.style.display = 'none';
+    }    
 
     displayStatus(message, typeMsg) {
         const statusElement = this.querySelector('#importmenu');
