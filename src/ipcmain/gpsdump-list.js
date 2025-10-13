@@ -228,11 +228,13 @@ async function flightlistFlytec(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
         // We don't decode id line -> Line 2 6015, SW 1.3.07, S/N 1068
         flightList.model = 'Flytec 6015 / Brau IQ basic'
       }
-      // excellent site for regex testing : https://www.regextester.com/     
+      // raw flight list request.
+      // output format 0; 17.07.06; 16:37:44;        2; 00:17:27;       95;     2005;     1055;        0.89;       -3.82;       14.00;Pilot Name        ;Glider name         ;not-set
+      // excellent site for regex testing : https://www.regextester.com/
       // Ci dessous une ligne obtenue dans le terminal sous Linux avec la version 28
       //     28; 19.03.30; 09:03:04;        2; 0
       // on a enlevé le point virgule de départ pour essai concluant sous Linux
-      let regexDateHours = /([^;]*);([^;]*);([^;]*);([^;]*);/
+      const regexDateHours = /([^;]*);([^;]*);([^;]*);([^;]*);([^;]*);/;
       for (let i = 0; i < lines.length; i++) {
         if (lines[i].match(regexDateHours)) {
           let flDate = regexDateHours.exec(lines[i])
@@ -241,9 +243,18 @@ async function flightlistFlytec(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
           // By default, all the flights are to be added to the logbook.  
           // A check in the logbook is made by dblog.checkFlightList
           flight['new'] = true
-          flight['date'] = flDate[2]
+          // flDate[2] est au format YY.MM.DD et il nous faut DD.MM.YY
+          const arr = flDate[2].split('.');
+          if (arr.length === 3) {
+            const day = arr[2].trim();
+            const month = arr[1].trim();
+            const year = arr[0].trim();
+            flight['date'] = `${day}.${month}.${year}`; // DD.MM.YY sans espaces
+          } else {
+              flight['date'] = flDate[2];
+          }          
           flight['takeoff'] = flDate[3]
-          flight['duration'] = ''  // apparemment on ne ramène plus la durée flDate[4]
+          flight['duration'] = flDate[5] 
           flight['gpsdump'] = gpsdumpGPS+','+gpsdumpPort+','+gpsModel
           flightList.flights.push(flight)     
         } else {
@@ -252,15 +263,18 @@ async function flightlistFlytec(gpsdumpOutput,gpsModel,gpsdumpGPS,gpsdumpPort) {
       }
     }
     if (flightList.flights.length > 0) {
-      let flightListChecked = dblog.checkFlightList(flightList) 
-      flightList = flightListChecked
+        // Recherche des vols non enregistrés dans la db
+        const flightListChecked = await checkFlightList(flightList);
     } else {
-      flightList.error = true
-      flightList.otherlines.push('No flights listed by GPSDump')         
+        flightList.error = true
+        flightList.otherlines.push('GPSDump not found')
+        console.log('GPSDump not found')        
     }
   } catch (err) {
     log.error('flightlistFlytec exception : '+err)
   }  
+
+  return flightList
 }
 
 /**
@@ -371,6 +385,7 @@ async function checkFlightList(flightList) {
     let arrDate = flight['date'].split('.')
     if (arrDate.length === 3) {
       let strDate =  '20'+arrDate[2]+'-'+arrDate[1]+'-'+arrDate[0]
+      console.log('checkFlightList for date '+flight['date']+' -> '+strDate)
       arrTakeoff = flight['takeoff'].split(':')
       if (arrTakeoff.length === 3) {
         let takeoffMinSeconds = (parseInt(arrTakeoff[1])*60)+parseInt(arrTakeoff[2])
@@ -381,6 +396,7 @@ async function checkFlightList(flightList) {
           let dateStart = strDate+' 00:00:00'
           let dateEnd = strDate+' 23:59:59'
           const reqSQL = `SELECT V_Date,V_Duree FROM Vol WHERE V_Date >= '${dateStart}' and V_Date <= '${dateEnd}'`
+        //  console.log('checkFlightList SQL : '+reqSQL)
           const flightsOfDay = dbCore.query(reqSQL);
           for (const fl of flightsOfDay) {
             let diffSecOK 

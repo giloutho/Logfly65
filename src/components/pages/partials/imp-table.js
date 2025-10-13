@@ -582,6 +582,7 @@ class ImpTable extends HTMLElement {
       }    
       let data = [];
       let nbToInsert = 0;
+      this.disableTable();
       this.dataTableInstance.rows().data().toArray().forEach(row => {
         if (row.toInsert === true) {
           let reqline = {};
@@ -632,6 +633,7 @@ class ImpTable extends HTMLElement {
       }
       // On fera un alert et un retour au carnet comme dans L6
       this.displayStatus(this.currentGpsLib+' : '+nbInserted+' / '+nbToInsert+' '+this.gettext('flights inserted'), 'success');
+      this.activateTable();
       const divTable = this.querySelector('#div_table');
       // Vider la table et masquer le div
       if (this.dataTableInstance) {
@@ -660,6 +662,22 @@ class ImpTable extends HTMLElement {
     gettext(key) {
       return this.i18n[key] || key;
      }
+
+    disableTable() {
+      const table = this.querySelector('#tableimp');
+      if (table) {
+        table.style.pointerEvents = 'none';
+        table.style.opacity = '0.6'; // Optionnel : effet visuel de désactivation
+      }
+    }
+
+    activateTable() {
+      const table = this.querySelector('#tableimp');
+      if (table) {
+        table.style.pointerEvents = '';
+        table.style.opacity = '';
+      }
+    }
 }
 
 window.customElements.define('imp-table', ImpTable);
