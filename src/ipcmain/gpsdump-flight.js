@@ -93,18 +93,16 @@ async function getGpsdumpFlight(gpsParam, flightIndex, withGeoJSON) {
             callString = path.basename(gpsDumpPath)+' '+paramGPS+' '+paramPort+' '+paramFile+' '+paramFlightIndex
             console.log(callString)
             data = execFileSync(gpsDumpPath, [paramGPS,paramPort,paramFile,paramFlightIndex])
-            // L5 -> new String[]{pathGpsDump,sTypeGps, macPort, name64IGC, numberIGC};
             break
         case 'linux':
             callString = path.basename(gpsDumpPath)+' '+paramGPS+' '+paramPort+' '+paramFile+' '+paramFlightIndex
             console.log(callString)
             data = execFileSync(gpsDumpPath, [paramGPS,paramPort,paramFile,paramFlightIndex])
-            // L5 -> new String[]{pathGpsDump,sTypeGps, linuxPort, tempIGC, numberIGC};
             break
       }
       // data has been declared but not not necessarily initialized if the communication fails
       if (data) {
-          console.log('GpsDump call ok')
+          console.log('GpsDump call ok '+data.length+' bytes : '+data.toString())
           const flightDecoding = await validIgc(tempFileName, withGeoJSON)
           if (!flightDecoding.success) {
             const errMsg = 'getGpsdumpFlight decoding : '+flightDecoding.message
