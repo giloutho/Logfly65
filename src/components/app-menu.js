@@ -11,7 +11,7 @@ export class AppMenu extends HTMLElement {
         }
         /* Concerne le logo*/
         .navbar-brand img {
-          height: 2.5rem;
+          height: 2.1rem;
           max-height: 100%;
           width: auto;
         }        
@@ -22,14 +22,15 @@ export class AppMenu extends HTMLElement {
           flex-direction: row;
           justify-content: center;
           align-items: center;
-          gap: 2.5rem;
+          gap: 1.2rem; /* espace réduit entre les icônes */
         }
         .navbar-nav.center-icons .nav-link {
           padding: 0;
         }
+        /* réglage taille icônes */
         .navbar-nav.center-icons img {
-          height: 2.1rem;
-          width: 2.1rem;
+          height: 1.7rem;
+          width: 1.7rem;
           object-fit: contain;
           display: block;
         }        
@@ -88,8 +89,8 @@ export class AppMenu extends HTMLElement {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#waypoint" title="Points de cheminement">
-                        <img src="./static/icons/mnu-waypoint.png" alt="Points de cheminement" height="32">
+                    <a class="nav-link" href="#waypoint" title="Waypoints">
+                        <img src="./static/icons/mnu-waypoint.png" alt="Waypoints" height="32">
                     </a>
                 </li>
                 <li class="nav-item">
@@ -108,7 +109,7 @@ export class AppMenu extends HTMLElement {
               </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#settings" title="Support">
+                <a class="nav-link" href="#support" title="Support">
                     <img src="./static/icons/mnu-support.png" alt="Support" height="32">
                 </a>
             </li>
@@ -145,7 +146,7 @@ export class AppMenu extends HTMLElement {
     });    
 
     // À l'initialisation, sur la page courante
-    setActiveIcon(window.location.hash || '#import');
+    setActiveIcon(window.location.hash || '#settings');
 
     // la navigation est fondée sur le hash dans l'URL
     window.addEventListener('hashchange', () => {

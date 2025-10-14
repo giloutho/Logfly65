@@ -2,7 +2,7 @@ const app = document.getElementById("app");
 
 function renderRoute() {
   // Pour remttre logbook par defaut mettre "#home" à la la place de "#import"
-  const hash = window.location.hash || "#import";
+  const hash = window.location.hash || "#settings";
   if (window._lastRoute === hash) {
     console.log('renderRoute ignoré, route déjà affichée :', hash);
     return;
