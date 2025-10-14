@@ -1,7 +1,7 @@
 {
   "name": "logfly65",
   "productName": "Logfly65",
-  "version": "6.5.0",
+  "version": "7.0.0",
   "description": "Paragliding flights logbook",
   "main": "src/main.js",
   "scripts": {
