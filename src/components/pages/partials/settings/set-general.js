@@ -1,0 +1,170 @@
+class SetGeneral extends HTMLElement {
+    constructor() {
+        super();
+        //implementation
+    }
+
+    connectedCallback() {
+        this.innerHTML = /*html */`
+                <style>
+                  .settings-container {
+                    margin-left: 16px;
+                    margin-right: 16px;
+                    padding-bottom: 15px;
+                  }                  
+                  .settings-highlight {
+                    background: linear-gradient(135deg, #e0f0ff 0%, #b3d8ff 100%);
+                    border-radius: 0.7rem;
+                    box-shadow: 0 2px 8px #2196f344;
+                    padding: 1.2rem 1rem 0.7rem 1rem;
+                    margin-bottom: 2rem;
+                  }
+                  .settings-highlight-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 2rem;
+                    margin-bottom: 0.5rem;
+                  }
+                  .settings-highlight label {
+                    min-width: 120px;
+                    margin-right: 0.5rem;
+                    font-weight: 500;
+                  }
+                  .settings-highlight select {
+                    min-width: 120px;
+                    margin-right: 1.5rem;
+                  }
+                  .settings-highlight .info {
+                    color: #0a2540;
+                    font-size: 0.98em;
+                    font-style: italic;
+                  }
+                  .settings-highlight .credit-label {
+                    min-width: 140px;
+                    color: #0a2540;
+                  }
+                  .settings-highlight .credit-name {
+                    font-weight: 600;
+                    color: #1a6dcc;
+                    margin-right: 2.5rem;
+                  }
+                  /* Styles existants pour la suite */
+                  .settings-field {
+                    display: flex;
+                    align-items: center;
+                    margin-left: 20px;
+                    margin-right: 20px;
+                    margin-bottom: 1rem;
+                  }
+                  .settings-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                  }
+                  .settings-field label {
+                    width: 200px; 
+                  }
+                  .settings-field select,
+                  .settings-field input {
+                    min-width: 200px;
+                    margin-right: 0.5rem;
+                  }
+                  .settings-field button {
+                    min-width: 80px;
+                  }
+                  .ml-16 {
+                    margin-left: 16px;
+                  }    
+                  .settings-group .ml-16 {
+                    margin-left: 16px;
+                    min-width: unset;
+                  }                                
+                </style>
+                <div class="settings-container">
+                  <div class="settings-highlight">
+                    <div class="settings-highlight-row">
+                      <label for="language">Language</label>
+                      <select id="language">
+                        <option value="de">German</option>
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                        <option value="it">Italian</option>
+                      </select>
+                      <span class="info">If you want to translate Logfly contact support</span>
+                    </div>
+                    <div class="settings-highlight-row">
+                      <span class="credit-label">German translation</span>
+                      <span class="credit-name">Daniel Messelken</span>
+                      <span class="credit-label">Italian translation</span>
+                      <span class="credit-name">Walter Segnana</span>
+                    </div>
+                  </div>
+                  <div class="settings-field">
+                    <div class="settings-group">
+                      <label for="current-logbook">Current logbook</label>
+                      <select id="current-logbook">
+                        <option value="logbook1">Logbook 1</option>
+                        <option value="logbook2">Logbook 2</option>
+                      </select>
+                    </div>
+                    <div class="settings-group">
+                      <label for="create-logbook" style="margin-left:3rem;text-align:right;">Create logbook</label>
+                      <input type="text" id="create-logbook" placeholder="New logbook name">
+                    </div>
+                  </div>
+                  <div class="settings-field">
+                    <div class="settings-group">
+                      <label for="repatriate-copy">Repatriate a copy</label>
+                      <button id="select-copy" class="btn btn-secondary btn-sm">Select</button>
+                    </div>             
+                  </div>
+                  <div class="settings-field">
+                    <div class="settings-group">
+                      <label for="auto-photo">Automatic display of photos</label>
+                      <select id="auto-photo">
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </div>                
+                  </div>                  
+                  <div class="settings-field">
+                    <div class="settings-group">
+                      <label for="start-window">Start window</label>
+                      <select id="start-window">
+                        <option value="logbook">Logbook</option>
+                        <option value="overview">Overview</option>
+                      </select>
+                    </div>
+                    <div class="settings-group">
+                      <label for="overview-mode" style="margin-left:3rem;text-align:right;">Overview</label>
+                      <select id="overview-mode">
+                        <option value="calendar">Calendar year</option>
+                        <option value="last12">Last twelve months</option>
+                      </select>
+                    </div>
+                  </div>            
+                  <div class="settings-field">
+                    <div class="settings-group">
+                      <label for="default-map">Default map</label>
+                      <select id="default-map">
+                        <option value="osm">OpenStreetMap</option>
+                        <option value="ign">IGN</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="settings-field">
+                    <div class="settings-group">
+                      <label for="default-map">Default map latitude</label>
+                      <input type="text" id="latitude" placeholder="e.g. 45.1234">
+                    </div>
+                    <div class="settings-group">
+                      <label for="overview-mode" style="text-align:right;">Default map longitude</label>
+                      <input type="text" id="longitude" placeholder="e.g. 6.1234">
+                    </div>
+                  </div>
+                </div>
+        `;
+    }
+}
+
+window.customElements.define('set-general', SetGeneral);
