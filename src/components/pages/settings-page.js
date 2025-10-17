@@ -17,6 +17,14 @@ export class SettingsPage extends HTMLElement {
       this.langLoaded = true;
     }  
     this.render();
+    // Transfert de i18n aux enfants APRES le this.render()
+    this.querySelectorAll('set-general, set-pilot, set-web').forEach(el => {
+      if (typeof el.setI18n === 'function') {
+        el.setI18n(this.i18n);
+      } else {
+        el.i18n = this.i18n;
+      }
+    }); 
     this.setupEventListeners();
   }  
 

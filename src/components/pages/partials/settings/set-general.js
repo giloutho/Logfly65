@@ -1,11 +1,16 @@
 class SetGeneral extends HTMLElement {
     constructor() {
         super();
-        //implementation
+        this.i18n = {} // Ecrasé par le parent
     }
 
-    connectedCallback() {
-        this.innerHTML = /*html */`
+    async connectedCallback() {
+      this.render();
+      this.setupEventListeners();
+    }
+
+    render() {
+            this.innerHTML = /*html */`
                 <style>
                   .settings-container {
                     margin-left: 16px;
@@ -83,7 +88,7 @@ class SetGeneral extends HTMLElement {
                 <div class="settings-container">
                   <div class="settings-highlight">
                     <div class="settings-highlight-row">
-                      <label for="language">Language</label>
+                      <label id="label-language" for="language">Language</label>
                       <select id="language">
                         <option value="de">German</option>
                         <option value="en">English</option>
@@ -101,26 +106,26 @@ class SetGeneral extends HTMLElement {
                   </div>
                   <div class="settings-field">
                     <div class="settings-group">
-                      <label for="current-logbook">Current logbook</label>
+                      <label id="label-current-logbook" for="current-logbook">Current logbook</label>
                       <select id="current-logbook">
                         <option value="logbook1">Logbook 1</option>
                         <option value="logbook2">Logbook 2</option>
                       </select>
                     </div>
                     <div class="settings-group">
-                      <label for="create-logbook" style="margin-left:3rem;text-align:right;">Create logbook</label>
+                      <label id="label-create-logbook" for="create-logbook" style="margin-left:3rem;text-align:right;">Create logbook</label>
                       <input type="text" id="create-logbook" placeholder="New logbook name">
                     </div>
                   </div>
                   <div class="settings-field">
                     <div class="settings-group">
-                      <label for="repatriate-copy">Repatriate a copy</label>
+                      <label id="label-repatriate-copy" for="repatriate-copy">Repatriate a copy</label>
                       <button id="select-copy" class="btn btn-secondary btn-sm">Select</button>
                     </div>             
                   </div>
                   <div class="settings-field">
                     <div class="settings-group">
-                      <label for="auto-photo">Automatic display of photos</label>
+                      <label id="label-auto-photo" for="auto-photo">Automatic display of photos</label>
                       <select id="auto-photo">
                         <option value="yes">Yes</option>
                         <option value="no">No</option>
@@ -129,14 +134,14 @@ class SetGeneral extends HTMLElement {
                   </div>                  
                   <div class="settings-field">
                     <div class="settings-group">
-                      <label for="start-window">Start window</label>
+                      <label id="label-start-window" for="start-window">Start window</label>
                       <select id="start-window">
                         <option value="logbook">Logbook</option>
                         <option value="overview">Overview</option>
                       </select>
                     </div>
                     <div class="settings-group">
-                      <label for="overview-mode" style="margin-left:3rem;text-align:right;">Overview</label>
+                      <label id="label-overview-mode" for="overview-mode" style="margin-left:3rem;text-align:right;">Overview</label>
                       <select id="overview-mode">
                         <option value="calendar">Calendar year</option>
                         <option value="last12">Last twelve months</option>
@@ -145,7 +150,7 @@ class SetGeneral extends HTMLElement {
                   </div>            
                   <div class="settings-field">
                     <div class="settings-group">
-                      <label for="default-map">Default map</label>
+                      <label id="label-default-map" for="default-map">Default map</label>
                       <select id="default-map">
                         <option value="osm">OpenStreetMap</option>
                         <option value="ign">IGN</option>
@@ -154,17 +159,43 @@ class SetGeneral extends HTMLElement {
                   </div>
                   <div class="settings-field">
                     <div class="settings-group">
-                      <label for="default-map">Default map latitude</label>
+                      <label id="label-default-map-latitude" for="latitude">Default map latitude</label>
                       <input type="text" id="latitude" placeholder="e.g. 45.1234">
                     </div>
                     <div class="settings-group">
-                      <label for="overview-mode" style="text-align:right;">Default map longitude</label>
+                      <label id="label-default-map-longitude" for="longitude" style="text-align:right;">Default map longitude</label>
                       <input type="text" id="longitude" placeholder="e.g. 6.1234">
                     </div>
                   </div>
                 </div>
         `;
     }
+
+  setupEventListeners() { }
+
+  setI18n(i18n) {
+    this.i18n = i18n;
+    this.translation(); // Met à jour les labels traduits
+  }  
+
+  async translation() {
+    // Met à jour les labels avec les traductions
+    console.log('Language -> '+this.i18n['Language'])
+    this.querySelector('#label-language').textContent = this.gettext('Language');
+    this.querySelector('#label-current-logbook').textContent = this.gettext('Current logbook');
+    this.querySelector('#label-create-logbook').textContent = this.gettext('Create logbook');
+    this.querySelector('#label-repatriate-copy').textContent = this.gettext('Repatriate a copy');
+    this.querySelector('#label-auto-photo').textContent = this.gettext('Automatic display of photos');
+    this.querySelector('#label-start-window').textContent = this.gettext('Start window');
+    this.querySelector('#label-overview-mode').textContent = this.gettext('Overview');
+    this.querySelector('#label-default-map').textContent = this.gettext('Default map');
+    this.querySelector('#label-default-map-latitude').textContent = this.gettext('Default map latitude');
+    this.querySelector('#label-default-map-longitude').textContent = this.gettext('Default map longitude');
+  }
+
+  gettext(key) {
+    return this.i18n[key] || key;
+  }       
 }
 
 window.customElements.define('set-general', SetGeneral);

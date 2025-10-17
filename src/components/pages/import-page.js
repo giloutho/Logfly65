@@ -1,4 +1,4 @@
-import "./partials/imp-table.js";
+import "./partials/import/imp-table.js";
 
 export class ImportPage extends HTMLElement {
 //   static get disabledFeatures() { 

@@ -1,6 +1,6 @@
-import "./partials/log-table.js";
-import "./partials/log-map.js";
-import "./partials/log-details.js";
+import "./partials/home/log-table.js";
+import "./partials//home/log-map.js";
+import "./partials//home/log-details.js";
 
 export class HomePage extends HTMLElement {
   connectedCallback() {
