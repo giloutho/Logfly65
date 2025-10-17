@@ -84,7 +84,7 @@ export class SettingsPage extends HTMLElement {
             <set-web></set-web>
         </div>
         <div style="margin-top: 1.5rem; text-align: center;">
-          <button class="btn btn-danger" id="save-btn">${this.gettext('Save Settings')}</button>
+          <button class="btn btn-danger" id="save-btn">${this.gettext('Save')}</button>
           <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
             <div class="modal-dialog">
               <div class="modal-content">

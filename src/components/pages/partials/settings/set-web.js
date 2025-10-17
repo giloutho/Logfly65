@@ -1,13 +1,10 @@
 class SetWeb extends HTMLElement {
     constructor() {
         super();
+        this.i18n = {} // Ecrasé par le parent        
     }
 
     async connectedCallback() {
-      if (!this.langLoaded) {
-        await this.langRequest();
-        this.langLoaded = true;
-      }  
       this.render();
       this.setupEventListeners();
     }
@@ -41,23 +38,23 @@ class SetWeb extends HTMLElement {
         </style>
         <div class="settings-container">
             <div class="settings-field">
-                <label for="logfly-url">Logfly site url</label>
+                <label id="label-logfly-url" for="logfly-url">Logfly site url</label>
                 <input type="text" id="logfly-url" />
             </div>
             <div class="settings-field">
-                <label for="download-url">Download url</label>
+                <label id="label-download-url" for="download-url">Download url</label>
                 <input type="text" id="download-url" />
             </div>
             <div class="settings-field">
-                <label for="flyxc-url">FlyXC url</label>
+                <label id="label-flyxc-url" for="flyxc-url">FlyXC url</label>
                 <input type="text" id="flyxc-url" />
             </div>
             <div class="settings-field">
-                <label for="airspace-url">Airspace download url</label>
+                <label id="label-airspace-url" for="airspace-url">Airspace download url</label>
                 <input type="text" id="airspace-url" />
             </div>
             <div class="settings-field">
-                <label for="claim-url">Claim url</label>
+                <label id="label-claim-url" for="claim-url">Claim url</label>
                 <input type="text" id="claim-url" />
             </div>
         </div>
@@ -66,10 +63,18 @@ class SetWeb extends HTMLElement {
 
     setupEventListeners() { }
 
-    async langRequest() {
-        this.i18n = await window.electronAPI.langmsg();
-        console.log('Settings -> '+this.i18n['Settings'])
+    setI18n(i18n) {
+        this.i18n = i18n;
+        this.translation(); // Met à jour les labels traduits
     }  
+
+    async translation() {
+        this.querySelector('#label-logfly-url').textContent = this.gettext('Logfly site url');
+        this.querySelector('#label-download-url').textContent = this.gettext('Download url');
+        this.querySelector('#label-flyxc-url').textContent = this.gettext('FlyXC url');
+        this.querySelector('#label-airspace-url').textContent = this.gettext('Airspace download url');
+        this.querySelector('#label-claim-url').textContent = this.gettext('Claim url');
+    }
 
     gettext(key) {
         return this.i18n[key] || key;
