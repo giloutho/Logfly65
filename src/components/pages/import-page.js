@@ -154,7 +154,7 @@ export class ImportPage extends HTMLElement {
   }
 
     async dbOpen() {
-        let dbname = await window.electronAPI.storeGet('dbname');
+        let dbname = await window.electronAPI.storeGet('dbName');
         if (!dbname) dbname = 'logfly.db';
         console.log('dbname : ' + dbname);
             try {

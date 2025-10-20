@@ -63,11 +63,70 @@ function deleteRow(table, where) {
     return stmt.run(...values);
 }
 
+function testDb(dbname) {
+    let result = {
+        tableCount: 0,
+        msgTables: '',
+        maxVDate: null,
+        msgVDate: '',
+        V_Tag_Exists: false,
+        msgTag: '',
+        globalError: '',
+        success : false
+    };
+    try {
+        openDatabase(dbname);
+        const basicReq = query('SELECT name FROM sqlite_master WHERE type=\'table\'');
+        if (basicReq.length >= 2) {
+            result.tableCount = basicReq.length;
+            lastFlightReq = query('SELECT MAX(V_date) FROM Vol');
+            if (lastFlightReq.length > 0) {
+                const lastFlight = lastFlightReq[0]['MAX(V_date)'];
+                if (lastFlight != null && lastFlight != undefined && lastFlight.length >= 4) {
+                    result.maxVDate =  lastFlight.substring(2, 4)
+                    const testV_Tag = query(`SELECT * FROM sqlite_master where sql like '%V_Tag%'`)
+                    if (testV_Tag.length === 0) {
+                        const alterReq = query(`ALTER TABLE Vol ADD V_Tag integer`)
+                        if (alterReq.length === 0) {
+                            // Si la colonne est ajoutée avec succès, alterReq est un tableau vide
+                            result.V_Tag_Exists = true
+                            result.msgTag = 'V_Tag column added successfully'
+                            // On fait l'impasse de l'ajout des valeurs par défaut 
+                            // pour ne pas complexifier la migration
+                            result.success = true
+                        } else {
+                            result.V_Tag_Exists = false
+                            result.msgTag = 'Error adding V_Tag column'
+                        }
+                    } else {
+                        result.V_Tag_Exists = true
+                        result.success = true
+                    }
+                } else {
+                    result.maxVDate = null
+                    result.msgVDate = 'No valid date found in database'
+                }
+            } else {
+                result.maxVDate = ''
+                result.msgVDate = 'No flights in database'
+            }
+        } else {
+            result.tableCount = basicReq.length
+            result.msgTables = 'Insufficient tables in database'
+        }
+    } catch (error) {
+        result.globalError = 'Error in testDb : '+dbname+' '+error.message
+    }
+
+    return result
+}
+
 module.exports = {
     openDatabase,
     isDatabaseOpen,
     query,
     insert,
     update,
-    deleteRow
+    deleteRow,
+    testDb
 };

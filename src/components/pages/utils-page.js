@@ -55,7 +55,7 @@ class UtilsPage extends HTMLElement {
     });
 
     this.querySelector("#open-modal-btn").addEventListener("click", async () => {
-      const dbname = await window.electronAPI.storeGet('dbname');
+      const dbname = await window.electronAPI.storeGet('dbName');
       const modalBody = this.querySelector("#modal-body");
       modalBody.innerHTML = `<p>Nom de la base de données : ${dbname || 'Non défini'}</p>`;
     });

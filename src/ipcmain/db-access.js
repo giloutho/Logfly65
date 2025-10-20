@@ -17,16 +17,16 @@ ipcMain.handle('db:open', async (event, args) => {
         return { success: false, message: 'Database is not valid' };
     } catch (error) {
         const errMsg = 'Error opening at '+dbPath+' : '+error.message
-        log.info('Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);
-        log.info('app.getPath(\'userData\' : '+app.getPath('userData'));
-        log.info('Chemin reçu:', dbPath);
-        log.info('Fichier existe ?', fs.existsSync(dbPath));
+        log.info('db:open Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);
+        log.info('db:open app.getPath(\'userData\' : '+app.getPath('userData'));
+        log.info('db:open Chemin reçu:', dbPath);
+        log.info('db:open Fichier existe ?', fs.existsSync(dbPath));
         if (fs.existsSync(dbPath)) {
             const stats = fs.statSync(dbPath);
-            log.info('Taille fichier:', stats.size);
-            log.info('Droits:', stats.mode);
+            log.info('db:open Taille fichier:', stats.size);
+            log.info('db:open Droits:', stats.mode);
         } else {
-            log.error('ERREUR: Le fichier n\'existe pas !');
+            log.error('db:open ERREUR: Le fichier n\'existe pas !');
         }                      
         return { success: false, message: errMsg };
     }

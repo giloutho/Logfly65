@@ -16,10 +16,26 @@ const { dialog } = require('electron');
 * chaque propriété (comme filters, title, etc.) directement à showOpenDialog :
 */
 ipcMain.handle('dialog:openfile', async (event,args) => {
+    // On déstructure les propriétés attendues dans args
+    const {
+        title,
+        message,
+        defaultFolder,
+        buttonLabel,
+        properties,
+        filters
+    } = args;
+    const defaultPath = path.join(app.getPath('documents'), defaultFolder)
+    // On passe chaque propriété à showOpenDialog
     const result = await dialog.showOpenDialog({
-        ...args
+        title,
+        message,
+        defaultPath,
+        buttonLabel,
+        properties,
+        filters
     });
-    
+
     return result;
 });
 

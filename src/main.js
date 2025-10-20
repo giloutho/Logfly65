@@ -42,11 +42,10 @@ const createWindow = () => {
   log.initialize();
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-
-  console.log('Chrome : ',process.versions.chrome,' Electron : ',process.versions.electron,' Node : ',process.versions.node);  
-  const startOk = settings.checkSettings(store)
   loadMainProcesses()
   loadLanguage();
+  //const startOk = settings.checkSettings(store, langjson)
+ // console.log('Settings check result : ', startOk)
   // Open the DevTools.
  // mainWindow.webContents.openDevTools();
 };
@@ -99,6 +98,12 @@ function loadLanguage() {
 
 ipcMain.handle('lang:msg', async (event, args) => {
   return langjson
+});
+
+ipcMain.handle('getStartStatus', async () => {
+  const startOk = await settings.checkSettings(store, langjson);
+  console.log('Main -> getStartStatus : ', startOk)
+  return startOk; // true si migration nécessaire
 });
 
 // Require each JS file in the ipcmain folder

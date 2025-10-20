@@ -2,8 +2,6 @@ const { ipcMain } = require('electron');
 const Store = require('electron-store').default;
 const store = new Store();
 
-console.log('store-access.js chargé');
-
 ipcMain.handle('electron-store-get', (event, key) => {
     // Pour lire depuis le renderer const dbPath = await window.electronAPI.storeGet('pathdb');
     return store.get(key);

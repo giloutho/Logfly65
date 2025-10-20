@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   langmsg: () => ipcRenderer.invoke('lang:msg'),
 
+  getStartStatus: () => ipcRenderer.invoke('getStartStatus'),
+
   invoke: (params) => {
       const channel = params.invoketype
       const args = params.args 
