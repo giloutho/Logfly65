@@ -16,7 +16,7 @@ const fs = require('node:fs');
 const log = require('electron-log/main');
 const Store = require('electron-store').default;
 const store = new Store();
-const settings = require('./js/app-settings.js');
+const settings = require('./js/check-settings.js');
 
 let langjson
 
