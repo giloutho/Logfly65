@@ -1,5 +1,16 @@
 export class AppMenu extends HTMLElement {
-  connectedCallback() {
+
+  constructor() {
+    super();
+    this.i18n = null;
+  }
+
+  async connectedCallback() {
+
+    // Charge le dictionnaire de langue une seule fois
+    if (!this.i18n) {
+      this.i18n = await window.electronAPI.langmsg();
+    }    
     this.innerHTML = /*html */`
       <style>
         .top-navbar {
@@ -54,7 +65,12 @@ export class AppMenu extends HTMLElement {
           <ul class="navbar-nav center-icons mb-2 mb-lg-0">
             <li class="nav-item">
               <a class="nav-link" href="#home" title="Carnet de vol">
-                <img src="./static/icons/mnu-logbook.png" alt="Logbook" />
+                <img src="./static/icons/mnu-logbook.png" 
+                  alt="Logbook" 
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="bottom"
+                  title=${this.gettext('Logbook')}                  
+                />
               </a>
             </li>
             <li class="nav-item">
@@ -64,7 +80,12 @@ export class AppMenu extends HTMLElement {
             </li>
             <li class="nav-item">
               <a class="nav-link" href="#import" title="Import">
-                <img src="./static/icons/mnu-import.png" alt="Import" />
+                <img src="./static/icons/mnu-import.png" 
+                  alt="Import" 
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="bottom"
+                  title=${this.gettext('Import')}                      
+                />
               </a>
             </li>
 
@@ -105,7 +126,12 @@ export class AppMenu extends HTMLElement {
                 </li>
             <li class="nav-item">
               <a class="nav-link" href="#settings" title="Réglages">
-                <img src="./static/icons/mnu-settings.png" alt="Réglages" />
+                <img src="./static/icons/mnu-settings.png" 
+                  alt="Réglages" 
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="bottom"
+                  title= ${this.gettext('Settings')}  
+                />
               </a>
             </li>
             <li class="nav-item">
@@ -125,6 +151,13 @@ export class AppMenu extends HTMLElement {
         </div>
       </nav>
     `;
+
+    // Initialise tous les tooltips du composant
+    this.destroyTooltips();
+    const tooltipTriggerList = this.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(el => {
+        new window.bootstrap.Tooltip(el);
+    });    
 
     // Gestion de l'icône active
     const navLinks = this.querySelectorAll('.navbar-nav.center-icons .nav-link');
@@ -183,6 +216,21 @@ export class AppMenu extends HTMLElement {
       }
     });
   }
+
+  destroyTooltips() {
+    const tooltips = this.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(el => {
+      if (el._tooltipInstance) {
+        el._tooltipInstance.dispose();
+        el._tooltipInstance = null;
+      }
+    });
+  }
+
+  gettext(key) {
+    return this.i18n[key] || key;
+  }  
+
 }
 
 customElements.define("app-menu", AppMenu);
