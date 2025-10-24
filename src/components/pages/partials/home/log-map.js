@@ -90,6 +90,7 @@ export class LogMap extends HTMLElement {
                 }));
             });            
         }
+        logTable.addEventListener('no-flights', this.mapEmpty.bind(this));
         const leftArrow = this.querySelector('#left-arrow');
         if (leftArrow) {
             leftArrow.addEventListener('click', (e) => {
@@ -109,7 +110,6 @@ export class LogMap extends HTMLElement {
         // console.log(`Row index : ${this.rowIndex} - Id_Vol: ${rowData.V_ID} - Engin: ${rowData.V_Engin} - Date: ${rowData.Day} ${rowData.Hour}`);
         
         const flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
-        console.log(flightLabel)
         const overlay = this.querySelector('#map-overlay-label');
         if (overlay) overlay.textContent = flightLabel;
 
@@ -200,15 +200,28 @@ export class LogMap extends HTMLElement {
     
     mapNotrack(dbFlight) {
         this.cleanMap();
-        const latDeco = dbFlight.V_LatDeco || 46.2044; // A compléter par les setings
-        const longDeco = dbFlight.V_LongDeco || 6.1432;
+        const latDeco = dbFlight.V_LatDeco || 45.863; // A compléter par les setings
+        const longDeco = dbFlight.V_LongDeco || 6.1725;
         if (this.map) {
             this.map.setView([latDeco, longDeco], 12);
         }        
         const takeOffPopUp = dbFlight.V_Site+'<br>'+dbFlight.V_AltDeco+'m'
         const startLatlng = L.latLng(latDeco, longDeco)
         this.startMarker = L.marker(startLatlng,{icon: this.startIcon}).addTo(this.map).bindPopup(takeOffPopUp).openPopup()
-    }   
+    }  
+
+    mapEmpty = (event) => {
+        const labelmsg =event.detail.mapMsg
+        const defLat = event.detail.defLat
+        const defLng = event.detail.defLong
+        this.cleanMap();
+        if (this.map) {
+            this.map.setView([defLat, defLng], 11);
+            const flightLabel = labelmsg
+            const overlay = this.querySelector('#map-overlay-label');
+            if (overlay) overlay.textContent = flightLabel;
+        }
+    }
 
     cleanMap() {
         // Retire la couche GeoJSON précédente si elle existe

@@ -73,7 +73,6 @@ export class LogTable extends HTMLElement {
   async dbOpen() {
     let dbname = await window.electronAPI.storeGet('dbName');
     if (!dbname) dbname = 'logfly.db';
-    console.log('dbname : ' + dbname);
       try {
             const params = {
                 invoketype: 'db:open',
@@ -106,7 +105,11 @@ export class LogTable extends HTMLElement {
               // resDb.result.forEach((row, idx) => {
               //     console.log(`Résultat ${idx + 1}:`, row.Day, row.Duree);
               // });
-              this.displayTable(resDb.result); // Réinitialise la table DataTable
+              if (resDb.result.length === 0) {
+                this.displayNoFlights();
+              } else {
+                this.displayTable(resDb.result); // Réinitialise la table DataTable
+              }
           } else {
               console.error(`\n-> Erreur requête : ${resDb.message}`);
           }
@@ -517,29 +520,44 @@ export class LogTable extends HTMLElement {
         }
       }
     }
+
+    async displayNoFlights() {
+      // log-table ne voit pas la div #right-panel
+      // il faut donc émettre un évènement vers home-page pour mettre à jour la partie droite
+      // log-map écoute aussi cet évènement pour afficher une carte par défaut
+      let defLat = await window.electronAPI.storeGet('finderlat');
+      let defLong = await window.electronAPI.storeGet('finderlong');
+      if (!defLat) defLat = 45.863;
+      if (!defLong) defLong = 6.1725;
+      const mapMsg = this.gettext('No track to display');
+      let panelMsg = `<p>${this.gettext('There are no flights in the logbook')}</p>`;
+      panelMsg += `<p>${this.gettext('To add flights, use the import function')}. `;
+      panelMsg += `<img src="./static/icons/mnu-import.png" alt="Import" style="width:1.7rem;height:1.7rem;vertical-align:middle;" /></p>`; // Ajout de l'image ici
+      this.dispatchEvent(new CustomEvent('no-flights', { detail: { panelMsg, mapMsg, defLat, defLong }, bubbles: true, composed: true }));
+    }
     
-  displayModal(title, body) {
-      const modal = this.querySelector('#winModal');
-      const modalTitle = modal.querySelector('#winModalLabel');
-      const modalBody = modal.querySelector('#winModalBody');
-      modalTitle.textContent = title;
-      modalBody.innerHTML = body;
-      const bsModal = new bootstrap.Modal(modal);
-      bsModal.show();
-      const validateBtn = modal.querySelector('#win-validate');
-      validateBtn.onclick = () => {
-          bsModal.hide();
-      };
-  }  
+    displayModal(title, body) {
+        const modal = this.querySelector('#winModal');
+        const modalTitle = modal.querySelector('#winModalLabel');
+        const modalBody = modal.querySelector('#winModalBody');
+        modalTitle.textContent = title;
+        modalBody.innerHTML = body;
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        const validateBtn = modal.querySelector('#win-validate');
+        validateBtn.onclick = () => {
+            bsModal.hide();
+        };
+    }  
 
-  async langRequest() {
-    this.i18n = await window.electronAPI.langmsg();
-    console.log('Overview -> '+this.i18n['Overview'])
-  }  
+    async langRequest() {
+      this.i18n = await window.electronAPI.langmsg();
+      console.log('Overview -> '+this.i18n['Overview'])
+    }  
 
-  gettext(key) {
-    return this.i18n[key] || key;
-  }  
+    gettext(key) {
+      return this.i18n[key] || key;
+    }  
 }
 
 customElements.define("log-table", LogTable);
