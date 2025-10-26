@@ -5,18 +5,13 @@ class LogDetails extends HTMLElement {
 
   constructor() {
     super();
-    this.i18n = {}; // Pour stocker les messages
-    this.langLoaded = false;
+    this.i18n = {}; // initialisé par le parent
     this.dbId = null;
     this.rowData = null;
     this.rowIndex = null;
   }    
 
   async connectedCallback() {
-    if (!this.langLoaded) {
-      await this.langRequest();
-      this.langLoaded = true;
-    }    
     this.render();
     this.setupEventListeners();    
   }
@@ -53,23 +48,23 @@ class LogDetails extends HTMLElement {
         <div class="card-header">
           <ul class="nav nav-tabs card-header-tabs" id="flightTabs" role="tablist">
             <li class="nav-item">
-              <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">A propos</button>
+              <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">${this.gettext('About')}</button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" id="comment-tab" data-bs-toggle="tab" data-bs-target="#comment" type="button" role="tab">Commentaire</button>
+              <button class="nav-link" id="comment-tab" data-bs-toggle="tab" data-bs-target="#comment" type="button" role="tab">${this.gettext('Comment')}</button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" id="modify-tab" data-bs-toggle="tab" data-bs-target="#modify" type="button" role="tab">Modification</button>
+              <button class="nav-link" id="modify-tab" data-bs-toggle="tab" data-bs-target="#modify" type="button" role="tab">${this.gettext('Modify')}</button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" id="share-tab" data-bs-toggle="tab" data-bs-target="#share" type="button" role="tab">Partage</button>
+              <button class="nav-link" id="share-tab" data-bs-toggle="tab" data-bs-target="#share" type="button" role="tab">${this.gettext('Share')}</button>
             </li>
             <!-- Dropdown -->
             <li class="nav-item dropdown" role="presentation">
-                <button class="nav-link dropdown-toggle" data-bs-toggle="dropdown" type="button" role="tab">Plus...</button>
+                <button class="nav-link dropdown-toggle" data-bs-toggle="dropdown" type="button" role="tab">${this.gettext('More')}...</button>
                 <ul class="dropdown-menu">
-                <li><a class="dropdown-item" data-bs-toggle="tab" href="#stats">Statistiques</a></li>
-                <li><a class="dropdown-item" data-bs-toggle="tab" href="#tags">Tag / Untag</a></li>
+                <li><a class="dropdown-item" data-bs-toggle="tab" href="#stats">${this.gettext('Statistics')}</a></li>
+                <li><a class="dropdown-item" data-bs-toggle="tab" href="#tags">${this.gettext('Tag / Untag')}</a></li>
                 </ul>
             </li>
           </ul>
@@ -88,42 +83,42 @@ class LogDetails extends HTMLElement {
             </div>
             <div class="d-flex flex-row gap-4 align-items-center mb-2">
               <span id="takeoff">
-                <strong id="takeoff-label">Décollage :</strong> <span id="takeoff-hour">14h05</span>
+                <strong id="takeoff-label">${this.gettext('Take off')} :</strong> <span id="takeoff-hour">14h05</span>
               </span>
               <span id="landing">
-                <strong id="landing-label">Atterrissage :</strong> <span id="landing-hour">15h17</span>
+                <strong id="landing-label">${this.gettext('Landing')} :</strong> <span id="landing-hour">15h17</span>
               </span>
               <span id="duration">
-                <strong id="duration-label">Durée :</strong> <span id="duration-value">1h12</span>
+                <strong id="duration-label">${this.gettext('Duration')} :</strong> <span id="duration-value">1h12</span>
               </span>
             </div>
             <div class="d-flex flex-row gap-4 align-items-center mb-2">
               <span id="alt-gps">
-                <strong id="alt-label">Alt max GPS :</strong> <span id="alt-value">14h05</span>
+                <strong id="alt-label">${this.gettext('Max GPS alt')} :</strong> <span id="alt-value">14h05</span>
               </span>
               <span id="vario">
-                <strong id="vario-label">Vario max :</strong> <span id="vario-value">6m/s</span>
+                <strong id="vario-label">${this.gettext('Max climb')} :</strong> <span id="vario-value">6m/s</span>
               </span>
               <span id="mini">
-                <strong id="mini-label">Vario mini :</strong> <span id="mini-value">967 m</span>
+                <strong id="mini-label">${this.gettext('Min GPS alt')} :</strong> <span id="mini-value">967 m</span>
               </span>              
             </div>      
             <div class="d-flex flex-row gap-4 align-items-center mb-2">
               <span id="score">
-                <strong id="score-label">Score :</strong>
+                <strong id="score-label">${this.gettext('Score')} :</strong>
                 <span id="score-value">75 km ajouter points et bouton si null</span>
-                <button id="score-calc-btn" class="btn btn-sm btn-outline-success ms-2">Calcul</button>
+                <button id="score-calc-btn" class="btn btn-sm btn-outline-success ms-2">${this.gettext('Compute')}</button>
               </span>
             </div>
-            <button class="btn btn-sm btn-outline-primary me-2">Ajouter photo</button>
-            <button class="btn btn-sm btn-outline-danger">Supprimer photo</button>
+            <button class="btn btn-sm btn-outline-primary me-2">${this.gettext('Add photo')}</button>
+            <button class="btn btn-sm btn-outline-danger">${this.gettext('Remove photo')}</button>
           </div>
           
           <!-- Onglet Commentaire -->
           <div class="tab-pane fade" id="comment" role="tabpanel">
             <textarea class="form-control mb-2 comment-placeholder" rows="4" id="comment-input" placeholder="Commentaire du vol #ID"></textarea>
-            <button class="btn btn-sm btn-secondary me-2" id="comment-delete-btn">Annuler</button>
-            <button class="btn btn-sm btn-primary" id="comment-submit-btn">Valider</button>
+            <button class="btn btn-sm btn-secondary me-2" id="comment-delete-btn">${this.gettext('Cancel')}</button>
+            <button class="btn btn-sm btn-primary" id="comment-submit-btn">${this.gettext('OK')}</button>
           </div>
       <style>
         .comment-placeholder::placeholder {
@@ -135,30 +130,30 @@ class LogDetails extends HTMLElement {
           <!-- Onglet Modification -->
           <div class="tab-pane fade" id="modify" role="tabpanel">
             <div class="d-flex flex-row gap-2 mb-2">
-              <button class="btn btn-sm btn-outline-primary" id="change-glider-btn">Changer voile</button>
-              <button class="btn btn-sm btn-outline-primary" id="change-site-btn">Changer site</button>
+              <button class="btn btn-sm btn-outline-primary" id="change-glider-btn">${this.gettext('Change glider')}</button>
+              <button class="btn btn-sm btn-outline-primary" id="change-site-btn">${this.gettext('Change site')}</button>
             </div>
             <div class="mb-2">
-              <button class="btn btn-sm btn-outline-danger" id="delete-btn">Supprimer</button>
+              <button class="btn btn-sm btn-outline-danger" id="delete-btn">${this.gettext('Delete')}</button>
             </div>
             <div class="d-flex flex-row gap-2">
-              <button class="btn btn-sm btn-outline-warning" id="edit-duplicate-btn">Éditer / Dupliquer</button>
-              <button class="btn btn-sm btn-outline-dark" id="merge-btn">Fusionner</button>
+              <button class="btn btn-sm btn-outline-warning" id="edit-duplicate-btn">${this.gettext('Edit/Duplicate')}</button>
+              <button class="btn btn-sm btn-outline-dark" id="merge-btn">${this.gettext('Merge flights')}</button>
             </div>
           </div>
           
           <!-- Onglet Partage -->
           <div class="tab-pane fade" id="share" role="tabpanel">
-            <button class="btn btn-sm btn-outline-secondary me-2">Exporter IGC</button>
-            <button class="btn btn-sm btn-outline-secondary me-2">Exporter GPX</button>
-            <button class="btn btn-sm btn-outline-secondary">Envoyer par mail</button>
+            <button class="btn btn-sm btn-outline-secondary me-2">${this.gettext('IGC export')}</button>
+            <button class="btn btn-sm btn-outline-secondary me-2">${this.gettext('GPX export')}</button>
+            <button class="btn btn-sm btn-outline-secondary">${this.gettext('Mail export')}</button>
           </div>
           
           <!-- Onglet Statistiques -->
           <div class="tab-pane fade" id="stats" role="tabpanel">
-            <p><strong>Total voile :</strong> 128 h</p>
-            <p><strong>Total sélection :</strong> 56 h</p>
-            <button class="btn btn-sm btn-outline-primary">Synthèse annuelle</button>
+            <p><strong>${this.gettext('Glider flight time')}</strong> 128 h</p>
+            <p><strong>${this.gettext('Totals for the selection')} :</strong> 56 h</p>
+            <button class="btn btn-sm btn-outline-primary">${this.gettext('Overview')}</button>
           </div>
           
           <!-- Onglet Tag/Untag -->
@@ -310,8 +305,18 @@ class LogDetails extends HTMLElement {
         } 
     }    
 
-    async langRequest() {
-        this.i18n = await window.electronAPI.langmsg();
+    setI18n(i18n) {
+      this.i18n = i18n;
+      this.render(); // Re-render to update texts
+      this.setupEventListeners(); // Indispensable, render remplace le DOM et détruit les listeners
+      // Transfert de i18n aux enfants APRES le this.render()
+      this.querySelectorAll('log-gliders, log-sites').forEach(el => {
+        if (typeof el.setI18n === 'function') {
+          el.setI18n(this.i18n);
+        } else {
+          el.i18n = this.i18n;
+        }    
+      });      
     }  
 
     gettext(key) {

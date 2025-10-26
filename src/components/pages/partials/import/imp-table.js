@@ -9,17 +9,12 @@ class ImpTable extends HTMLElement {
     constructor() {
         super();
         this.dataTableInstance = null; // Ajout pour stocker l'instance DataTable
-        this.i18n = {} // Pour stocker les messages
-        this.langLoaded = false;
+        this.i18n = {}
         this.currentGpsLib = null; // GPSDump, SeeYou, XCSoar ...
         this.typeGps = null;
     }
 
     async connectedCallback() {
-        if (!this.langLoaded) {
-        await this.langRequest();
-        this.langLoaded = true;
-        }
         this.render();
         this.setupEventListeners();
     }
@@ -62,11 +57,6 @@ class ImpTable extends HTMLElement {
                     </div>
                 </div>                   
     `;
-    }
-
-    async langRequest() {
-      this.i18n = await window.electronAPI.langmsg();
-      console.log('Overview -> '+this.i18n['Overview'])
     }
 
     setupEventListeners() {

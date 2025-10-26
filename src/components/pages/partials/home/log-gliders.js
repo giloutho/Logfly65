@@ -1,17 +1,12 @@
 class LogGliders extends HTMLElement {
     constructor() {
         super();
-        this.i18n = {} // Pour stocker les messages
-        this.langLoaded = false;
+        this.i18n = {} // initialisé par le parent
         this.modal = null;
         this.rowData = null;
     }
 
     async connectedCallback() {
-        if (!this.langLoaded) {
-            await this.langRequest();
-            this.langLoaded = true;
-        }    
         this.render();
         this.modal = new bootstrap.Modal(this.querySelector('#flightModal'));
         // Force la saisie en majuscule dans le champ newglider
@@ -26,6 +21,8 @@ class LogGliders extends HTMLElement {
         this.rowData = rowData;
         this.fillGlidersList();
         this.querySelector('#winModalTitle').innerHTML = this.gettext('Change glider');
+        this.querySelector('#choose-glider-title').innerHTML = this.gettext('Choose an existant glider');
+        this.querySelector('#new-glider-title').innerHTML = this.gettext('Or new glider');  
         this.modal.show();
     }    
 
@@ -40,11 +37,11 @@ class LogGliders extends HTMLElement {
                         </div>
                         <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.2rem;">
                             <div class="alert alert-info">
-                                <h5>${this.gettext('Choose an existant glider')}</h5>
+                                <h5 id="choose-glider-title">${this.gettext('Choose an existant glider')}</h5>
                                 <select id="flight-glider" class="form-select"></select>
                             </div>
                             <div class="alert alert-info">
-                                <h5>${this.gettext('Or new glider')}</h5>
+                                <h5 id="new-glider-title">${this.gettext('Or new glider')}</h5>
                                 <input type="text" id="newglider" class="form-control" placeholder="${this.gettext('Enter new glider name')}">
                             </div>
                         </div>
@@ -109,8 +106,8 @@ class LogGliders extends HTMLElement {
         }        
     }
 
-    async langRequest() {
-        this.i18n = await window.electronAPI.langmsg();
+    setI18n(i18n) {
+        this.i18n = i18n;
     }  
 
     gettext(key) {

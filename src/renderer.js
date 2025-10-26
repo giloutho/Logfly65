@@ -1,42 +1,39 @@
 import('./components/pages/error-page.js');
+import { loadRoute } from './components/router.js';
 
 const app = document.getElementById("app");
+let i18n = null; 
 
 window.addEventListener("DOMContentLoaded", async () => {
-  console.log('Appel getStartStatus...');
   const startParam = await window.electronAPI.getStartStatus();
   console.log('Renderer : start status check result : ', startParam);
+
+  // Charger le dictionnaire de langue une seule fois
+  i18n = await window.electronAPI.langmsg();
+
   if (!startParam.success) {
     console.error('Error while checking start status: ', startParam.globalError);
     app.innerHTML = "";
     const errorPage = document.createElement("error-page");
-    errorPage.startParam = startParam; // <-- Passe l'objet ici
+    errorPage.startParam = startParam;
+    if (typeof errorPage.setI18n === 'function') {
+      errorPage.setI18n(i18n);
+    } else {
+      errorPage.i18n = i18n;
+    }
     app.appendChild(errorPage);
-    return; // On n'appelle pas renderRoute
+    return;
   }
   // Sinon, on lance le routage normal
   renderRoute();
 });
 
 function renderRoute() {
-  // Pour remttre logbook par defaut mettre "#home" à la la place de "#import"
-  const hash = window.location.hash || "#settings";
-  if (window._lastRoute === hash) {
-    console.log('renderRoute ignoré, route déjà affichée :', hash);
-    return;
-  }
-  window._lastRoute = hash;
-  console.log('renderRoute appelé pour :', hash);
-  app.innerHTML = "";
-
-  app.appendChild(document.createElement("app-menu"));
-
-  const body = document.createElement("app-body");
-  body.setAttribute("route", hash.substring(1));
-  app.appendChild(body);
-
- // app.appendChild(document.createElement("app-footer"));
+  const hash = window.location.hash.replace('#', '') || 'settings';
+  console.log('RenderRoute i18n ', i18n);
+  loadRoute(hash, app, i18n);
 }
 
 window.addEventListener("hashchange", renderRoute);
-//window.addEventListener("DOMContentLoaded", renderRoute);
+// Supprime ce deuxième DOMContentLoaded, il n'est plus utile
+// window.addEventListener("DOMContentLoaded", renderRoute);

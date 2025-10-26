@@ -1,7 +1,7 @@
 class LogSites extends HTMLElement {
     constructor() {
         super();
-        this.i18n = {} // Pour stocker les messages
+        this.i18n = {} // initialisé par le parent
         this.modal = null;
         this.rowData = null;
         this.newSite = null
@@ -15,10 +15,6 @@ class LogSites extends HTMLElement {
     }
 
     async connectedCallback() {
-        if (!this.langLoaded) {
-            await this.langRequest();
-            this.langLoaded = true;
-        }    
         this.render();
         this.modal = new bootstrap.Modal(this.querySelector('#sitesModal'));
         // On peut maintenant sélectionner les éléments
@@ -43,30 +39,32 @@ class LogSites extends HTMLElement {
                             <div class="alert alert-info">    
                                 <div style="display: flex; align-items: center; gap: 1rem;">
                                     <span style="min-width: 320px; display: inline-block;">
-                                            <b>${this.gettext('Option 1')}</b> : ${this.gettext('Update name')}
-                                        </span>
-                                        <input type="text" id="newname" class="form-control" style="min-width: 350px; max-width: 100%;" placeholder="${this.gettext('Enter new site name')}">
+                                        <span id="option1-label"><b>Option 1</b></span>
+                                        <span id="update-name-label">: Update name</span>
+                                    </span>
+                                    <input type="text" id="newname" class="form-control" style="min-width: 350px; max-width: 100%;" />
                                 </div>
                             </div>
                             <div class="alert alert-info">
                                 <div style="display: flex; align-items: center; gap: 1rem;">
-                                    <span style="min-width: 320px; display: inline-block;">
-                                        <b>${this.gettext('Option 2')}</b> : ${this.gettext('Switch to an existing site')}
-                                    </span>
+                                    <div style="min-width: 320px; display: inline-block;">
+                                        <span id="option2-label"><b>Option 2</b></span>
+                                        <span id="switch-site-label">: Switch to an existing site</span>
+                                    </div>
                                     <select id="flight-site" class="form-select" style="min-width: 350px; max-width: 100%;"></select>
                                 </div>
                             </div>
                             <div class="alert alert-info">
                                 <div style="display: flex; align-items: center; gap: 1rem;">
-                                    <span style="font-weight: bold;">${this.gettext('Current')}</span>
+                                    <span style="font-weight: bold;" id="current-label">Current</span>
                                     <span id="oldSiteName">A définir</span>
-                                    <span style="font-weight: bold;">${this.gettext('become')}</span>
+                                    <span style="font-weight: bold;" id="become-label">Become</span>
                                     <span id="newvalue">No data</span>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${this.gettext('Cancel')}</button> 
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancel-btn">${this.gettext('Cancel')}</button> 
                             <button type="button" class="btn btn-success" id="change-btn">${this.gettext('Confirm')}</button>
                         </div>                        
                     </div>
@@ -206,9 +204,22 @@ class LogSites extends HTMLElement {
         this.modal.hide();
     }       
 
-    async langRequest() {
-        this.i18n = await window.electronAPI.langmsg();
-    }  
+    setI18n(i18n) {
+        this.i18n = i18n;
+        this.translateLabels();
+    }      
+
+    translateLabels() {
+        this.querySelector('#option1-label').innerHTML = `<b>${this.gettext('Option 1')}</b>`;
+        this.querySelector('#update-name-label').innerHTML = `: ${this.gettext('Update name')}`;
+        this.querySelector('#newname').placeholder = this.gettext('Enter the new name');
+        this.querySelector('#option2-label').innerHTML = `<b>${this.gettext('Option 2')}</b>`;
+        this.querySelector('#switch-site-label').innerHTML = `: ${this.gettext('Switch to an existing site')}`;
+        this.querySelector('#current-label').innerHTML = `<span style="font-weight: bold;">${this.gettext('Current')}</span>`;
+        this.querySelector('#become-label').innerHTML = `<span style="font-weight: bold;">${this.gettext('Become')}</span>`;
+        this.querySelector('#cancel-btn').innerHTML = this.gettext('Cancel');
+        this.querySelector('#change-btn').innerHTML = this.gettext('Confirm');
+    }
 
     gettext(key) {
         return this.i18n[key] || key;

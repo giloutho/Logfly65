@@ -8,15 +8,10 @@ export class ImportPage extends HTMLElement {
   constructor() {
       super();
       this.dataTableInstance = null; // Ajout pour stocker l'instance DataTable
-      this.i18n = {} // Pour stocker les messages
-      this.langLoaded = false;
+      this.i18n = {} 
   }
 
   async connectedCallback() {
-    if (!this.langLoaded) {
-      await this.langRequest();
-      this.langLoaded = true;
-    }  
     this.render();
     this.setupEventListeners();
     this.dbOpen(); // Ouverture de la base de données 
@@ -363,9 +358,18 @@ export class ImportPage extends HTMLElement {
       statusElement.classList.remove('d-none');        
   }  
 
-  async langRequest() {
-    this.i18n = await window.electronAPI.langmsg();
-    console.log('Import from a GPS -> '+this.i18n['Import from a GPS'])
+  setI18n(i18n) {
+    this.i18n = i18n;
+    this.render(); // Re-render to update texts
+    this.setupEventListeners(); // Indispensable, render remplace le DOM et détruit les listeners
+    // Transfert de i18n aux enfants APRES le this.render()
+    this.querySelectorAll('imp-table').forEach(el => {
+      if (typeof el.setI18n === 'function') {
+        el.setI18n(this.i18n);
+      } else {
+        el.i18n = this.i18n;
+      }    
+    });
   }  
 
   gettext(key) {

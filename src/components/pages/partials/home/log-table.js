@@ -13,16 +13,11 @@ export class LogTable extends HTMLElement {
     super();
     this.dataTableInstance = null;
     this.i18n = {}; // Pour stocker les messages
-    this.langLoaded = false;
     this.initialTableLines = 8; // Mémorise le nombre de lignes initial
     this.tableLines = this.initialTableLines; // Nombre de lignes par page
   }
 
   async connectedCallback() {
-    if (!this.langLoaded) {
-      await this.langRequest();
-      this.langLoaded = true;
-    }
     this.render();
     this.dbOpen(); // Ouverture de la base de données 
     this.setupEventListeners();
@@ -548,11 +543,6 @@ export class LogTable extends HTMLElement {
         validateBtn.onclick = () => {
             bsModal.hide();
         };
-    }  
-
-    async langRequest() {
-      this.i18n = await window.electronAPI.langmsg();
-      console.log('Overview -> '+this.i18n['Overview'])
     }  
 
     gettext(key) {

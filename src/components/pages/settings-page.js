@@ -7,24 +7,11 @@ export class SettingsPage extends HTMLElement {
   constructor() {
       super();
       this.dataTableInstance = null; // Ajout pour stocker l'instance DataTable
-      this.i18n = {} // Pour stocker les messages
-      this.langLoaded = false;
+      this.i18n = {}
   }
 
-  async connectedCallback() {
-    if (!this.langLoaded) {
-      await this.langRequest();
-      this.langLoaded = true;
-    }  
+  async connectedCallback() { 
     this.render();
-    // Transfert de i18n aux enfants APRES le this.render()
-    this.querySelectorAll('set-general, set-pilot, set-web').forEach(el => {
-      if (typeof el.setI18n === 'function') {
-        el.setI18n(this.i18n);
-      } else {
-        el.i18n = this.i18n;
-      }
-    }); 
     this.setupEventListeners();
   }  
 
@@ -107,10 +94,20 @@ export class SettingsPage extends HTMLElement {
 
   setupEventListeners() { }
 
-  async langRequest() {
-    this.i18n = await window.electronAPI.langmsg();
-    console.log('Settings -> '+this.i18n['Settings'])
-  }  
+  setI18n(i18n) {
+    this.i18n = i18n;
+    console.log('SettingsPage setI18n Close', i18n);
+    console.log('Close ->', this.gettext('Close'));
+    this.render(); // Re-render to update texts
+    // Transfert de i18n aux enfants APRES le this.render()
+    this.querySelectorAll('set-general, set-pilot, set-web').forEach(el => {
+      if (typeof el.setI18n === 'function') {
+        el.setI18n(this.i18n);
+      } else {
+        el.i18n = this.i18n;
+      }    
+    });
+  }
 
   gettext(key) {
     return this.i18n[key] || key;
