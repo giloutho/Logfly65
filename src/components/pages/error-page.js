@@ -1,9 +1,11 @@
+import ('./partials/modal-contact.js'); 
+
 class ErrorPage extends HTMLElement {
     constructor() {
         super();
-        this.i18n = {} // Pour stocker les messages
-        this.langLoaded = false;
+        this.i18n = {} 
         this._startParam = null;
+        this.errorMsg = "";
     }
 
     set startParam(obj) {
@@ -16,23 +18,19 @@ class ErrorPage extends HTMLElement {
     }    
 
     async connectedCallback() {
-        if (!this.langLoaded) {
-            await this.langRequest();
-            this.langLoaded = true;
-        }  
         this.render();
         this.setupEventListeners();
     }
 
     render() {
-        const errorMsg = this._startParam?.globalError || "Vous devez confirmer la copie du carnet de vol";
+        this.errorMsg = this._startParam?.globalError || "Vous devez confirmer la copie du carnet de vol";
         this.innerHTML = /*html */`
             <div class="container py-4 text-center">
                 <h1 id="error-title">${this.gettext('Logfly could not start')}</h1>
                 
                 <div id="error-report-section" style="margin-bottom:4rem;">
                     <span id="error-report-label" style="font-weight:bold;">${this.gettext('Migration')} Logfly 7 ${this.gettext('Error report')} : </span>
-                    <div id="error-report" style="margin-top:0.5rem;">${errorMsg}</div>
+                    <div id="error-report" style="margin-top:0.5rem;">${this.errorMsg}</div>
                 </div>
                 
                 <section id="select-logbook-section" style="margin-bottom:4rem;">
@@ -50,11 +48,21 @@ class ErrorPage extends HTMLElement {
                     <span id="contact-support-label" style="font-weight:bold;">${this.gettext('Contact support')}</span>
                     <button id="contact-support-btn" class="btn btn-danger" style="margin-left:1rem;">${this.gettext('Send an e-mail')}</button>
                 </section>
+                <modal-contact></modal-contact>
             </div>
         `;
     }    
 
-    setupEventListeners() {  
+    setupEventListeners() {
+        
+        this.addEventListener('modal-contact-ready', () => {
+            console.log('modal-contact-ready event received in ErrorPage');
+            const modalContact = this.querySelector('modal-contact');
+            if (modalContact && typeof modalContact.setI18n === 'function') {
+                modalContact.setI18n(this.i18n, this.errorMsg);
+            }
+        });        
+
         const selectBtn = this.querySelector('#select-logbook-btn');
         if (selectBtn) {
             selectBtn.addEventListener('click', () => this.selectLogbook());
@@ -72,8 +80,15 @@ class ErrorPage extends HTMLElement {
                 // Remplace tout ce qui n'est pas lettre ou chiffre par rien
                 e.target.value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
             });
-        }        
-    }    
+        }   
+        
+        const contactBtn = this.querySelector('#contact-support-btn');
+        if (contactBtn) {
+          contactBtn.addEventListener('click', () => {
+            this.querySelector('modal-contact').open();             
+          });          
+        }
+    }
 
     async selectLogbook() {
         const chooseMsg = this.gettext('Choose an existing logbook');
@@ -154,9 +169,10 @@ class ErrorPage extends HTMLElement {
         } 
     }
 
-    async langRequest() {
-        this.i18n = await window.electronAPI.langmsg();
-    }  
+    setI18n(i18n) {
+        this.i18n = i18n;
+        console.log('i18n ErrorPage -> '+this.i18n['Logfly could not start']);     
+    }      
 
     gettext(key) {
         return this.i18n[key] || key;
