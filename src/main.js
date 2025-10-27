@@ -26,6 +26,10 @@ if (require('electron-squirrel-startup')) {
 }
 
 const createWindow = () => {
+  let fullscreen = store.get('fullscreen');
+  if (fullscreen === undefined || fullscreen === null) {
+    fullscreen = false;
+  }
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     // Résolutions écran les plus courantes
@@ -38,6 +42,7 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       sandbox: false,
     },
+    fullscreen: fullscreen,
   });
   log.initialize();
   // and load the index.html of the app.
@@ -102,7 +107,7 @@ ipcMain.handle('lang:msg', async (event, args) => {
 
 ipcMain.handle('getStartStatus', async () => {
   const startOk = await settings.checkSettings(store, langjson);
-  console.log('Main -> getStartStatus : ', startOk)
+  //console.log('Main -> getStartStatus : ', startOk)
   return startOk; // true si migration nécessaire
 });
 
