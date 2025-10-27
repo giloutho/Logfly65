@@ -27,7 +27,7 @@ if (require('electron-squirrel-startup')) {
 
 const createWindow = () => {
   let fullscreen = store.get('fullscreen');
-  if (fullscreen === undefined || fullscreen === null) {
+  if (fullscreen === undefined || fullscreen === null || fullscreen === 'no') {
     fullscreen = false;
   }
   // Create the browser window.
