@@ -38,7 +38,7 @@ async function checkCurrentDb(store) {
     if (recDbName != undefined && recDbName != null && recDbName != '') {
         const dbResult = await checkDbFile(recDbName, store)
         if (dbResult.success) {
-            console.log('checkCurrentDb dbResult : ', dbResult)
+            console.log('checkCurrentDb : ', dbResult.tableCount,' tables found in Db : ', recDbName)
         } else {
             log.error('checkCurrentDb not good with Db : ', recDbName)
             const { tableCount, msgTables, maxVDate, msgVDate, V_Tag_Exists, msgTag, globalError } = dbResult
