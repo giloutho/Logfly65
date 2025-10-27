@@ -2,7 +2,6 @@ class SetPilot extends HTMLElement {
     constructor() {
         super();
         this.i18n = {}; // Ecrasé par le parent
-        // this.attachShadow({ mode: 'open' }); // SUPPRIMÉ
     }
 
     async connectedCallback() {
@@ -34,6 +33,10 @@ class SetPilot extends HTMLElement {
                 .priority-label {
                     margin-left: 10px;
                 }
+                #pilot-name,
+                #glider {
+                text-transform: uppercase;
+                }                
                 @media (max-width: 900px) {
                     .settings-container {
                         margin: 2px;
@@ -86,7 +89,7 @@ class SetPilot extends HTMLElement {
                             <label id="label-pilot-mail" for="pilot-mail" class="form-label me-2">${this.gettext('Pilot mail')}</label>
                             <input type="text" id="pilot-mail" class="form-control" />
                         </div>
-                        <div class="col-12 col-md-3 d-flex align-items-center mb-2">
+                        <div class="col-12 col-md-4 d-flex align-items-center mb-2">
                             <label id="label-league" for="league" class="form-label me-2">${this.gettext('League')}</label>
                             <select id="sel-league" class="form-select"></select>
                         </div>
@@ -102,18 +105,29 @@ class SetPilot extends HTMLElement {
                             <input type="password" id="pass" class="form-control" />
                         </div>
                     </div>
+
+                    <div class="row mb-3">
+                      <div class="col-12 d-flex justify-content-center">
+                        <button type="button" class="btn btn-danger" id="save-btn">Save</button>
+                      </div>
+                    </div>   
+
                 </div>
             </div>
         `;
         // Ajoute ici les listeners pour les boutons si besoin
     }
 
-    setupEventListeners() { }
+    setupEventListeners() { 
+        this.querySelector('#save-btn').addEventListener('click', async () => {
+        this.dispatchEvent(new CustomEvent('save-request', { bubbles: true }));
+        });
+    }
 
     setI18n(i18n) {
         this.i18n = i18n;
         this.translation();
-        this.translateSelect();
+        this.getStoredSettings();
     }
 
     async translation() {
@@ -129,14 +143,53 @@ class SetPilot extends HTMLElement {
         this.querySelector('#pilot-priority-label').textContent = this.gettext('Priority on IGC field');
         this.querySelector('#glider-priority-label').textContent = this.gettext('Priority on IGC field');
         this.querySelector('#new-flights-label').textContent = this.gettext('Only display new flights');
+        this.querySelector('#save-btn').textContent = this.gettext('Save');
     }
 
-    translateSelect() {
-        const selectGps = this.querySelector('#sel-gps');
-        if (!selectGps) return;
-        selectGps.innerHTML = '';
+    async getStoredSettings() {
+        const params = {
+            invoketype: 'store-get-pilot',
+            args: {}
+        };
+        const pilotSettings = await window.electronAPI.invoke(params);
+
+        console.log('Pilot settings retrieved:', pilotSettings);
+        this.querySelector('#pilot-name').value = pilotSettings.name;
+        this.querySelector('#pilot-priority').checked = pilotSettings.namepriority;
+        this.querySelector('#glider').value = pilotSettings.glider;
+        this.querySelector('#glider-priority').checked = pilotSettings.gliderpriority
+        this.fillSelectGps(pilotSettings.gps);
+        this.querySelector('#usb-limit').value = pilotSettings.gpsusb;
+        this.querySelector('#only-new-flights').checked = pilotSettings.newflights;
+        this.querySelector('#pilot-mail').value = pilotSettings.pilotid;
+        this.fillSelectLeague(pilotSettings.league);
+        this.querySelector('#login').value = pilotSettings.pilotid;
+        this.querySelector('#pass').value = pilotSettings.pilotpass;
+        
+    }
+
+    getValues() {
+        return {
+            name: this.querySelector('#pilot-name').value.toUpperCase(),
+            namepriority: this.querySelector('#pilot-priority').checked ? 1 : 0,
+            glider: this.querySelector('#glider').value.toUpperCase(),
+            gliderpriority: this.querySelector('#glider-priority').checked ? 1 : 0,
+            gps: this.querySelector('#sel-gps').value,
+            gpsusb: this.querySelector('#usb-limit').value,
+            newflights: this.querySelector('#only-new-flights').checked ? 1 : 0,
+            mail: this.querySelector('#pilot-mail').value,
+            league: this.querySelector('#sel-league').value,
+            pilotid: this.querySelector('#login').value,
+            pilotpass: this.querySelector('#pass').value
+        };
+    }
+
+    fillSelectGps(currentGps) {
+        const select = this.querySelector('#sel-gps');
+        if (!select) return;
+        select.innerHTML = ''; 
         const gpsList = [
-            { key: 'none', val: this.gettext(' No GPS selected') },
+            { key: 'none', val: this.gettext('Not selected') },
             { key: '6020', val: '6020/6030' },
             { key: '6015', val: '6015' },
             { key: 'flynet', val: 'Flynet' },
@@ -153,34 +206,47 @@ class SetPilot extends HTMLElement {
             { key: 'cpil', val: 'C-Pilot Evo' },
             { key: 'xctra', val: 'XC Tracer' },
             { key: 'digi', val: 'Digifly' },
-            { key: 'vard', val: 'Varduino' }
+            { key: 'vard', val: 'Varduino' }      
         ]
         gpsList.forEach(gps => {
             const option = document.createElement('option');
             option.value = gps.key;
             option.textContent = gps.val;
-            selectGps.appendChild(option);
+            select.appendChild(option);
         });
 
-        const selectLeague = this.querySelector('#sel-league');
-        if (!selectLeague) return;
-        selectLeague.innerHTML = '';
-        const leagues = [
-            { key: 'FR', val: 'FFVL' },
-            { key: 'XC', val: 'XContest' },
-            { key: 'FAI', val: 'FAI' },
-            { key: 'FAIC', val: 'FAI-Cylinders' },
-            { key: 'FAIO', val: 'FAI-OAR' },
-            { key: 'FAIOA', val: 'FAI-OAR2' },
-            { key: 'XL', val: 'XCLeague' }
-        ]
-        leagues.forEach(league => {
-            const option = document.createElement('option');
-            option.value = league.key;
-            option.textContent = league.val;
-            selectLeague.appendChild(option);
-        });
-    }
+        if (currentGps && gpsList.some(gps => gps.key === currentGps)) {
+            select.value = currentGps;
+        } else {
+            select.value = 'none';
+        }
+    }    
+
+  fillSelectLeague(currentLeague) {         
+    const select = this.querySelector('#sel-league');
+    if (!select) return;
+    select.innerHTML = '';          
+    const leagues = [
+        { key: 'FR', val: 'FFVL' },
+        { key: 'XC', val: 'XContest' },
+        { key: 'FAI', val: 'FAI' },
+        { key: 'FAIC', val: 'FAI-Cylinders' },
+        { key: 'FAIO', val: 'FAI-OAR' },
+        { key: 'FAIOA', val: 'FAI-OAR2' },
+        { key: 'XL', val: 'XCLeague' }
+    ];
+    leagues.forEach(league => {
+        const option = document.createElement('option');
+        option.value = league.key;
+        option.textContent = league.val;
+        select.appendChild(option);
+    });
+    if (currentLeague && leagues.some(league => league.key === currentLeague)) {
+        select.value = currentLeague;
+    } else {
+        select.value = 'XC';
+    }   
+}
 
     gettext(key) {
         return this.i18n[key] || key;

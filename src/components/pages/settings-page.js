@@ -71,12 +71,11 @@ export class SettingsPage extends HTMLElement {
             <set-web></set-web>
         </div>
         <div style="margin-top: 1.5rem; text-align: center;">
-          <button class="btn btn-danger" id="save-btn">${this.gettext('Save')}</button>
           <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title" id="infoModalLabel">${this.gettext('Current Settings')}</h5>
+                  <h5 class="modal-title" id="infoModalLabel">Current Settings</h5>
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="modal-body">
@@ -92,7 +91,47 @@ export class SettingsPage extends HTMLElement {
     `;
   }
 
-  setupEventListeners() { }
+  setupEventListeners() {}
+
+  async saveSettings() {
+    // Récupération des paramètres depuis les composants enfants
+    const generalSettings = this.querySelector('set-general').getValues();
+    const pilotSettings = this.querySelector('set-pilot').getValues();
+    const webSettings = this.querySelector('set-web').getValues();
+    alert(generalSettings.lang+' '+pilotSettings.name+' '+webSettings.urllogfly);
+    // Envoi des paramètres au main process pour sauvegarde
+    const paramsGen = {
+      invoketype: 'store-set-general',
+      args: generalSettings
+    };
+    const resultGeneral = await window.electronAPI.invoke(paramsGen);
+
+    const paramsPilot = {
+      invoketype: 'store-set-pilot',
+      args: pilotSettings
+    };
+    const resultPilot = await window.electronAPI.invoke(paramsPilot);
+
+    const paramsWeb = {
+      invoketype: 'store-set-web',
+      args: webSettings
+    };
+    const resultWeb = await window.electronAPI.invoke(paramsWeb);
+
+    // Affichage des résultats dans la modal
+    const modalTitle = this.querySelector('#infoModalLabel');
+    modalTitle.textContent = this.gettext('Saving the configuration');
+    const modalBody = this.querySelector('#modal-body');
+    modalBody.innerHTML = `
+      <p><strong>${this.gettext('General')}:</strong> ${resultGeneral.success ? this.gettext('Saved changes') : this.gettext('Error saving')}</p>
+      <p><strong>${this.gettext('Pilot')}:</strong> ${resultPilot.success ? this.gettext('Saved changes') : this.gettext('Error saving')}</p>
+      <p><strong>${this.gettext('Web')}:</strong> ${resultWeb.success ? this.gettext('Saved changes') : this.gettext('Error saving')}</p>
+    `;
+
+    // Afficher la modal
+    const infoModal = new bootstrap.Modal(this.querySelector('#infoModal'));
+    infoModal.show();
+  }
 
   setI18n(i18n) {
     this.i18n = i18n;
@@ -107,6 +146,18 @@ export class SettingsPage extends HTMLElement {
         el.i18n = this.i18n;
       }    
     });
+    // Un peu tordu car un bouton 'Enregistrer' dans ce composant
+    // n'est pas accessible depuis les sous-composants
+    // C'est ici car le nouveau render écrase le premier setupEventListeners()
+    this.querySelector('set-general').addEventListener('save-request', () => {
+      this.saveSettings()
+    });    
+    this.querySelector('set-pilot').addEventListener('save-request', () => {
+      this.saveSettings()
+    });    
+    this.querySelector('set-web').addEventListener('save-request', () => {
+      this.saveSettings()
+    });    
   }
 
   gettext(key) {
