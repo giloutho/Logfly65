@@ -12,50 +12,50 @@ class SetWeb extends HTMLElement {
     render() {
         this.innerHTML = /*html */`
         <style>
-            .settings-container {
-                margin-left: 16px;
-                margin-right: 16px;
-                padding-top: 15px;
-                padding-bottom: 15px;
-                border-radius: 16px;
-                background: #f8fbff;
+            .settings-body {
+                margin: 10px;
+                padding-bottom: 10px;
             }
-            .settings-field {
-                display: flex;
-                align-items: center;
-                margin-bottom: 1rem;
-            }
-            .settings-field label {                
-                width: 250px; 
-                margin-right: 0.5rem;
+            .form-label-large {
+                min-width: 300px;
                 font-weight: 500;
             }
-            .settings-field input[type="text"] {
-                min-width: 220px;
-                flex: 1;
-                padding: 0.2rem 0.5rem;
+            .form-control {
+                min-width: 120px;
             }
         </style>
-        <div class="settings-container">
-            <div class="settings-field">
-                <label id="label-logfly-url" for="logfly-url">Logfly site url</label>
-                <input type="text" id="logfly-url" />
-            </div>
-            <div class="settings-field">
-                <label id="label-download-url" for="download-url">Download url</label>
-                <input type="text" id="download-url" />
-            </div>
-            <div class="settings-field">
-                <label id="label-flyxc-url" for="flyxc-url">FlyXC url</label>
-                <input type="text" id="flyxc-url" />
-            </div>
-            <div class="settings-field">
-                <label id="label-airspace-url" for="airspace-url">Airspace download url</label>
-                <input type="text" id="airspace-url" />
-            </div>
-            <div class="settings-field">
-                <label id="label-claim-url" for="claim-url">Claim url</label>
-                <input type="text" id="claim-url" />
+        <div class="container-fluid px-2">
+            <div class="settings-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-8 d-flex align-items-center mb-2">
+                        <label id="label-logfly-url" for="logfly-url" class="form-label-large me-2">${this.gettext('Logfly site url')}</label>
+                        <input type="text" id="logfly-url" class="form-control" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-8 d-flex align-items-center mb-2">
+                        <label id="label-download-url" for="download-url" class="form-label-large me-2">${this.gettext('Download url')}</label>
+                        <input type="text" id="download-url" class="form-control" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-8 d-flex align-items-center mb-2">
+                        <label id="label-flyxc-url" for="flyxc-url" class="form-label-large me-2">${this.gettext('FlyXC url')}</label>
+                        <input type="text" id="flyxc-url" class="form-control" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">                    
+                    <div class="col-12 col-md-8 d-flex align-items-center mb-2">
+                        <label id="label-airspace-url" for="airspace-url" class="form-label-large me-2">${this.gettext('Airspace download url')}</label>
+                        <input type="text" id="airspace-url" class="form-control" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-8 d-flex align-items-center mb-2">
+                        <label id="label-claim-url" for="claim-url" class="form-label-large me-2">${this.gettext('Claim url')}</label>
+                        <input type="text" id="claim-url" class="form-control" />
+                    </div>
+                </div>
             </div>
         </div>
         `;

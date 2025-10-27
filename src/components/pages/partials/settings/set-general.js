@@ -12,11 +12,6 @@ class SetGeneral extends HTMLElement {
     render() {
             this.innerHTML = /*html */`
                 <style>
-                  .settings-container {
-                    margin-left: 16px;
-                    margin-right: 16px;
-                    padding-bottom: 15px;
-                  }                  
                   .settings-highlight {
                     background: linear-gradient(135deg, #e0f0ff 0%, #b3d8ff 100%);
                     border-radius: 0.7rem;
@@ -24,139 +19,99 @@ class SetGeneral extends HTMLElement {
                     padding: 1.2rem 1rem 0.7rem 1rem;
                     margin-bottom: 2rem;
                   }
-                  .settings-highlight-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 2rem;
-                    margin-bottom: 0.5rem;
+                  .settings-body {
+                    margin: 10px;
+                    padding-bottom: 10px !important;
                   }
-                  .settings-highlight label {
-                    min-width: 120px;
-                    margin-right: 0.5rem;
-                    font-weight: 500;
-                  }
-                  .settings-highlight select {
-                    min-width: 120px;
-                    margin-right: 1.5rem;
-                  }
-                  .settings-highlight .info {
-                    color: #0a2540;
-                    font-size: 0.98em;
-                    font-style: italic;
-                  }
-                  .settings-highlight .credit-label {
-                    min-width: 140px;
+                  .credit-label {
                     color: #0a2540;
                   }
-                  .settings-highlight .credit-name {
+                  .credit-name {
                     font-weight: 600;
                     color: #1a6dcc;
                     margin-right: 2.5rem;
-                  }
-                  /* Styles existants pour la suite */
-                  .settings-field {
-                    display: flex;
-                    align-items: center;
+                  }                      
+                  #bt-new-logbook {
                     margin-left: 20px;
-                    margin-right: 20px;
-                    margin-bottom: 1rem;
                   }
-                  .settings-group {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                  }
-                  .settings-field label {
-                    width: 200px; 
-                  }
-                  .settings-field select,
-                  .settings-field input {
-                    min-width: 200px;
-                    margin-right: 0.5rem;
-                  }
-                  .settings-field button {
-                    min-width: 80px;
-                  }
-                  .ml-16 {
-                    margin-left: 16px;
-                  }    
-                  .settings-group .ml-16 {
-                    margin-left: 16px;
-                    min-width: unset;
-                  }                                
                 </style>
-                <div class="settings-container">
-                  <div class="settings-highlight">
-                    <div class="settings-highlight-row">
-                      <label id="label-language" for="select-language">Language</label>
-                      <select id="select-language">
-                      </select>
-                      <span class="info" id="info-translate">If you want to translate Logfly contact support</span>
+                <div class="container-fluid px-2">
+                  <div class="settings-highlight mb-4">
+                    <div class="row align-items-center mb-2">
+                      <div class="col-12 col-md-3 mb-2 mb-md-0 d-flex align-items-center">
+                        <label id="label-language" for="select-language" class="form-label mb-0">${this.gettext('Language')}</label>
+                        <select id="select-language" class="form-select ms-2"></select>
+                      </div>
+                      <div class="col-12 col-md-8 d-flex align-items-center h-100 py-0">
+                        <span class="info" id="info-translate">${this.gettext('If you want to translate Logfly contact support')}</span>
+                      </div>
                     </div>
-                    <div class="settings-highlight-row">
-                      <span class="credit-label" id="credit-german">German translation</span>
-                      <span class="credit-name">Daniel Messelken</span>
-                      <span class="credit-label" id="credit-italian">Italian translation</span>
-                      <span class="credit-name">Walter Segnana</span>
-                    </div>
-                  </div>
-                  <div class="settings-field">
-                    <div class="settings-group">
-                      <label id="label-current-logbook" for="current-logbook">Current logbook</label>
-                      <select id="current-logbook">
-                        <option value="logbook1">Logbook 1</option>
-                        <option value="logbook2">Logbook 2</option>
-                      </select>
-                    </div>
-                    <div class="settings-group">
-                      <label id="label-create-logbook" for="create-logbook" style="margin-left:3rem;text-align:right;">Create logbook</label>
-                      <input type="text" id="create-logbook" placeholder="New logbook name">
-                      <button type="button" class="btn btn-outline-info" id="bt-new-logbook">Create</button>
+                    <div class="row">
+                      <div class="col-3 col-md-2 credit-label" id="credit-german">${this.gettext('German translation')}</div>
+                      <div class="col-3 col-md-2 credit-name">Daniel Messelken</div>
+                      <div class="col-3 col-md-2 credit-label" id="credit-italian">${this.gettext('Italian translation')}</div>
+                      <div class="col-3 col-md-2 credit-name">Walter Segnana</div>
                     </div>
                   </div>
-                  <div class="settings-field">
-                    <div class="settings-group">
-                      <label id="label-repatriate-copy" for="repatriate-copy">Repatriate a copy</label>
-                      <button id="select-copy" class="btn btn-secondary btn-sm">Select</button>
-                    </div>             
-                  </div>
-                  <div class="settings-field">
-                    <div class="settings-group">
-                      <label id="label-auto-photo" for="auto-photo">Automatic display of photos</label>
-                      <select id="sel-photos">
-                      </select>
-                    </div>                
-                  </div>                  
-                  <div class="settings-field">
-                    <div class="settings-group">
-                      <label id="label-start-window" for="start-window">Start window</label>
-                      <select id="sel-start-window">
-                      </select>
+                  <div class="settings-body">
+                    <div class="row g-3 mb-3">
+                      <div class="col-6 col-md-3">
+                        <label id="label-current-logbook" for="current-logbook" class="form-label">${this.gettext('Current logbook')}</label>
+                        <select id="current-logbook" class="form-select">
+                          <option value="logbook1">Logbook 1</option>
+                          <option value="logbook2">Logbook 2</option>
+                        </select>
+                      </div>
+                      <div class="col-6 col-md-3">
+                        <label id="label-create-logbook" for="create-logbook" class="form-label">${this.gettext('Create a new logbook')}</label>
+                        <div class="input-group">
+                          <input type="text" id="create-logbook" class="form-control" placeholder="${this.gettext('New logbook name')}">
+                          <button type="button" class="btn btn-outline-info rounded-start" id="bt-new-logbook">${this.gettext('Create')}</button>
+                        </div>
+                      </div>
                     </div>
-                    <div class="settings-group">
-                      <label id="label-overview-mode" for="overview-mode" style="margin-left:3rem;text-align:right;">Overview</label>
-                      <select id="sel-overview-mode">
-                      </select>
+
+                    <div class="row g-3 mb-3">
+                      <div class="col-12 col-md-8 d-flex align-items-center">
+                        <label id="label-repatriate-copy" for="repatriate-copy" class="form-label mb-0 me-2">${this.gettext('Repatriate a copy')}</label>
+                        <button id="select-copy" class="btn btn-secondary btn-sm me-4">${this.gettext('Select')}</button>
+                        <label id="label-auto-photo" for="auto-photo" class="form-label mb-0 me-2">${this.gettext('Automatic display of photos')}</label>
+                        <select id="sel-photos" class="form-select form-select-sm" style="width: 80px; min-width: 60px; display: inline-block;"></select>
+                      </div>
                     </div>
-                  </div>            
-                  <div class="settings-field">
-                    <div class="settings-group">
-                      <label id="label-default-map" for="default-map">Default map</label>
-                      <select id="default-map">
-                        <option value="osm">OpenStreetMap</option>
-                        <option value="ign">IGN</option>
-                      </select>
+
+                    <div class="row g-3 mb-3">
+                      <div class="col-6 col-md-3">
+                        <label id="label-start-window" for="start-window" class="form-label">${this.gettext('Start window')}</label>
+                        <select id="sel-start-window" class="form-select"></select>
+                      </div>
+                      <div class="col-6 col-md-3">
+                        <label id="label-overview-mode" for="overview-mode" class="form-label">${this.gettext('Overview')}</label>
+                        <select id="sel-overview-mode" class="form-select"></select>
+                      </div>
                     </div>
-                  </div>
-                  <div class="settings-field">
-                    <div class="settings-group">
-                      <label id="label-default-map-latitude" for="latitude">Default map latitude</label>
-                      <input type="text" id="latitude" placeholder="e.g. 45.1234">
+
+                    <div class="row g-3 mb-3">
+                      <div class="col-6 col-md-3">
+                        <label id="label-default-map" for="default-map" class="form-label">${this.gettext('Default map')}</label>
+                        <select id="default-map" class="form-select">
+                          <option value="osm">OpenStreetMap</option>
+                          <option value="ign">IGN</option>
+                        </select>
+                      </div>
                     </div>
-                    <div class="settings-group">
-                      <label id="label-default-map-longitude" for="longitude" style="text-align:right;">Default map longitude</label>
-                      <input type="text" id="longitude" placeholder="e.g. 6.1234">
+
+                    <div class="row g-3 mb-3">
+                      <div class="col-6 col-md-3">
+                        <label id="label-default-map-latitude" for="latitude" class="form-label">${this.gettext('Default map latitude')}</label>
+                        <input type="text" id="latitude" class="form-control" placeholder="e.g. 45.1234">
+                      </div>
+                      <div class="col-6 col-md-3">
+                        <label id="label-default-map-longitude" for="longitude" class="form-label">${this.gettext('Default map longitude')}</label>
+                        <input type="text" id="longitude" class="form-control" placeholder="e.g. 6.1234">
+                      </div>
                     </div>
+                    
                   </div>
                 </div>
         `;
