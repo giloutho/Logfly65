@@ -120,7 +120,7 @@ class SetPilot extends HTMLElement {
 
     setupEventListeners() { 
         this.querySelector('#save-btn').addEventListener('click', async () => {
-        this.dispatchEvent(new CustomEvent('save-request', { bubbles: true }));
+            this.dispatchEvent(new CustomEvent('save-request', { bubbles: true }));
         });
     }
 
@@ -222,31 +222,31 @@ class SetPilot extends HTMLElement {
         }
     }    
 
-  fillSelectLeague(currentLeague) {         
-    const select = this.querySelector('#sel-league');
-    if (!select) return;
-    select.innerHTML = '';          
-    const leagues = [
-        { key: 'FR', val: 'FFVL' },
-        { key: 'XC', val: 'XContest' },
-        { key: 'FAI', val: 'FAI' },
-        { key: 'FAIC', val: 'FAI-Cylinders' },
-        { key: 'FAIO', val: 'FAI-OAR' },
-        { key: 'FAIOA', val: 'FAI-OAR2' },
-        { key: 'XL', val: 'XCLeague' }
-    ];
-    leagues.forEach(league => {
-        const option = document.createElement('option');
-        option.value = league.key;
-        option.textContent = league.val;
-        select.appendChild(option);
-    });
-    if (currentLeague && leagues.some(league => league.key === currentLeague)) {
-        select.value = currentLeague;
-    } else {
-        select.value = 'XC';
-    }   
-}
+    fillSelectLeague(currentLeague) {         
+        const select = this.querySelector('#sel-league');
+        if (!select) return;
+        select.innerHTML = '';          
+        const leagues = [
+            { key: 'FR', val: 'FFVL' },
+            { key: 'XC', val: 'XContest' },
+            { key: 'FAI', val: 'FAI' },
+            { key: 'FAIC', val: 'FAI-Cylinders' },
+            { key: 'FAIO', val: 'FAI-OAR' },
+            { key: 'FAIOA', val: 'FAI-OAR2' },
+            { key: 'XL', val: 'XCLeague' }
+        ];
+        leagues.forEach(league => {
+            const option = document.createElement('option');
+            option.value = league.key;
+            option.textContent = league.val;
+            select.appendChild(option);
+        });
+        if (currentLeague && leagues.some(league => league.key === currentLeague)) {
+            select.value = currentLeague;
+        } else {
+            select.value = 'XC';
+        }   
+    }
 
     gettext(key) {
         return this.i18n[key] || key;

@@ -98,7 +98,6 @@ export class SettingsPage extends HTMLElement {
     const generalSettings = this.querySelector('set-general').getValues();
     const pilotSettings = this.querySelector('set-pilot').getValues();
     const webSettings = this.querySelector('set-web').getValues();
-    alert(generalSettings.lang+' '+pilotSettings.name+' '+webSettings.urllogfly);
     // Envoi des paramètres au main process pour sauvegarde
     const paramsGen = {
       invoketype: 'store-set-general',
@@ -128,7 +127,7 @@ export class SettingsPage extends HTMLElement {
       <p><strong>${this.gettext('Web')}:</strong> ${resultWeb.success ? this.gettext('Saved changes') : this.gettext('Error saving')}</p>
     `;
 
-    // Afficher la modal
+    // Afficher la modale
     const infoModal = new bootstrap.Modal(this.querySelector('#infoModal'));
     infoModal.show();
   }

@@ -124,6 +124,13 @@ class SetGeneral extends HTMLElement {
     }
 
   setupEventListeners() { 
+    this.querySelector('#bt-new-logbook').addEventListener('click', async () => {
+      this.createLogbook();
+    });
+
+    this.querySelector('#select-copy').addEventListener('click', async () => {
+      this.selectLogbookCopy();
+    });
     this.querySelector('#save-btn').addEventListener('click', async () => {
       this.dispatchEvent(new CustomEvent('save-request', { bubbles: true }));
     });
@@ -337,6 +344,108 @@ class SetGeneral extends HTMLElement {
       finderlong: this.querySelector('#longitude').value
     };
   }
+
+  async createLogbook() {
+      let logbookName = this.querySelector('#create-logbook').value.trim().replace(/\.[^/.]+$/, '').replace(/\s+/g, '');
+      if (logbookName === '') {
+          alert(this.gettext('Logbook name is empty'));
+          return;
+      }
+      // add db extension
+      logbookName += '.db' 
+      const createParams = {
+          invoketype: 'settings:create',
+          args : {
+              dbName : logbookName
+          }
+      }
+      const result =  await window.electronAPI.invoke(createParams);
+      if (result.success) {
+          // Ajoute le nouveau logbook à la liste des db
+          const select = this.querySelector('#current-logbook');
+          if (select) {
+              const option = document.createElement('option');
+              option.value = result.dbname;
+              option.textContent = result.dbname;
+              select.appendChild(option);
+              select.value = result.dbname;
+          }
+          this.querySelector('#create-logbook').value = ''; // Vide le champ
+      } else {
+          let errMsg = 'Logbook creation error'+'\n';
+          if (result.globalError && result.globalError !== '') {
+              errMsg += result.globalError + '\n';
+          }
+          if (result.msgTag && result.msgTag !== '') {
+              errMsg += result.msgTag + '\n';
+          }
+          if (result.msgTables && result.msgTables !== '') {
+              errMsg += result.msgTables+' Tables : '+ result.tableCount;
+          }
+          alert(errMsg);
+      }
+  }
+
+  async selectLogbookCopy() {
+      const chooseMsg = this.gettext('Choose an existing logbook');
+      const params = {
+          invoketype: 'dialog:openfile',
+          args: {
+              title: chooseMsg,
+              message : chooseMsg,
+              defaultFolder: 'Logfly',
+              buttonLabel: this.gettext('OK'),
+              properties: ['openFile'],
+              filters: [{ name: 'logbook', extensions: ['db'] }]
+          }
+      };
+      const chooseLogbook = await window.electronAPI.invoke(params);
+      if (chooseLogbook.canceled || chooseLogbook.filePaths.length === 0) {
+          alert(''+this.gettext('The operation is canceled'));
+          return;
+      }
+      console.log('Selected logbook file: ', chooseLogbook);
+      const fileParams = {
+          invoketype: 'settings:choose',
+          args : {
+              filePath : chooseLogbook.filePaths[0]
+          }
+      }
+      const result =  await window.electronAPI.invoke(fileParams);
+      if (result.success) {
+          const newdbName = result.dbname;
+          // Ajoute newdbName à la liste des db si absent
+          const select = this.querySelector('#current-logbook');
+          if (select) {
+              let exists = false;
+              for (let i = 0; i < select.options.length; i++) {
+                  if (select.options[i].value === newdbName) {
+                      exists = true;
+                      break;
+                  }
+              }
+              if (!exists) {
+                  const option = document.createElement('option');
+                  option.value = newdbName;
+                  option.textContent = newdbName;
+                  select.appendChild(option);
+              }
+              select.value = newdbName;
+          }
+      } else {
+          // il peut y avoir trois messages possibles :
+          // Nombre de tables msgTables != '' envoyer msgTables et tableCount
+          // Impossible d'ajouter V_Tag V_Tag_Exists == false envoyer msgTag
+          // globalError != '' envoyer globalError
+          if (result.msgTables && result.msgTables !== '') {
+              alert(this.gettext('Database issue: ') + result.msgTables + ' (' + this.gettext('Table count: ') + result.tableCount + ')');
+          } else if (result.V_Tag_Exists === false) {
+              alert(this.gettext('Database issue: ') + result.msgTag);
+          } else if (result.globalError && result.globalError !== '') {
+              alert(this.gettext('Database issue: ') + result.globalError);
+          }
+      }
+  }      
 
   gettext(key) {
     return this.i18n[key] || key;

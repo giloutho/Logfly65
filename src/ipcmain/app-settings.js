@@ -19,6 +19,7 @@ ipcMain.handle('settings:choose', async (event, args) => {
         if (dbResult.success) {
             log.info('Database '+dbName+' passed integrity test after copy.');
             store.set('dbName', dbName); 
+            console.log('settings:choose store dbName set to ', dbResult.dbname);
         } else {
            // il peut y avoir trois messages possibles :
             // Nombre de tables msgTables != '' envoyer msgTables et tableCount
@@ -31,6 +32,15 @@ ipcMain.handle('settings:choose', async (event, args) => {
             } else if (dbResult.globalError && dbResult.globalError !== '') {
                 log.error('settings:choose error with'+dbName+' : '+dbResult.globalError);
             }
+
+            // bad database file, it's necessary to delete it
+            try {
+                fs.unlinkSync(dbPath);
+                log.info('Corrupted database file '+dbName+' deleted from userData folder.');
+            } catch (delError) {
+                log.error('Error deleting corrupted database file '+dbName+' : '+delError.message);
+            }
+
             return dbResult;
         }    
         return dbResult

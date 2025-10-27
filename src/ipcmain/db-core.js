@@ -65,6 +65,7 @@ function deleteRow(table, where) {
 
 async function testDb(dbname) {
     let result = {
+        dbname: dbname,
         tableCount: 0,
         msgTables: '',
         maxVDate: null,
@@ -127,6 +128,7 @@ async function testDb(dbname) {
 
 async function createDb(dbFullPath) {
     let result = {
+        dbname: path.basename(dbFullPath),
         tableCount: 0,
         msgTables: '',
         globalError: '',
