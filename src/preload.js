@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  storeGet: (key) => ipcRenderer.invoke('electron-store-get', key),
-  storeSet: (key, value) => ipcRenderer.invoke('electron-store-set', key, value),
+  storeGet: (key) => ipcRenderer.invoke('store-get', key),
+  storeSet: (key, value) => ipcRenderer.invoke('store-set', key, value),
 
   langmsg: () => ipcRenderer.invoke('lang:msg'),
 
@@ -11,7 +11,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   invoke: (params) => {
       const channel = params.invoketype
       const args = params.args 
-      //console.log('invoke called with channel:', channel, 'and args:', args);
       return ipcRenderer.invoke(channel, args);
   },
 
