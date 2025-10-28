@@ -25,7 +25,7 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-const createWindow = () => {
+const createWindow = async () => {
   let fullscreen = store.get('fullscreen');
   if (fullscreen === undefined || fullscreen === null || fullscreen === 'no') {
     fullscreen = false;
@@ -36,23 +36,21 @@ const createWindow = () => {
     // Écran ordinateur de bureau ou portable / 16:9 (HD 900) / 1600 × 900 px
     // Écran ordinateur de bureau ou portable / 16:9 (HD 768) / 1366 × 768 px
     // Écran ordinateur de bureau / 5:4 (SXGA) / 1280 × 1024 px
-    width: 1366,
-    height: 768,
+    width: 1280,
+    height: 720,
+    fullscreen: !!fullscreen,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       sandbox: false,
     },
-    fullscreen: fullscreen,
   });
   log.initialize();
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   loadMainProcesses()
   loadLanguage();
-  //const startOk = settings.checkSettings(store, langjson)
- // console.log('Settings check result : ', startOk)
-  // Open the DevTools.
- // mainWindow.webContents.openDevTools();
+  const startOk = await settings.checkSettings(store, langjson)
+  console.log('Settings check result : ', startOk)
 };
 
 // This method will be called when Electron has finished
@@ -109,6 +107,13 @@ ipcMain.handle('getStartStatus', async () => {
   const startOk = await settings.checkSettings(store, langjson);
   //console.log('Main -> getStartStatus : ', startOk)
   return startOk; // true si migration nécessaire
+});
+
+ipcMain.handle('toggle-fullscreen', (event) => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) {
+    win.setFullScreen(!win.isFullScreen());
+  }
 });
 
 // Require each JS file in the ipcmain folder

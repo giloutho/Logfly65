@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   getStartStatus: () => ipcRenderer.invoke('getStartStatus'),
 
+  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+
   invoke: (params) => {
       const channel = params.invoketype
       const args = params.args 

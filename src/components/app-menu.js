@@ -179,7 +179,7 @@ export class AppMenu extends HTMLElement {
     });    
 
     // À l'initialisation, sur la page courante
-    setActiveIcon(window.location.hash || '#settings');
+    setActiveIcon(window.location.hash || '#home');
 
     // la navigation est fondée sur le hash dans l'URL
     window.addEventListener('hashchange', () => {
@@ -187,12 +187,13 @@ export class AppMenu extends HTMLElement {
     });    
 
     // Ajout du comportement toggle plein écran
-    this.querySelector('#fullscreen-toggle').addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
+    this.querySelector('#fullscreen-toggle').addEventListener('click', async () => {
+      window.electronAPI.toggleFullscreen();
+      // if (!document.fullscreenElement) {
+      //   document.documentElement.requestFullscreen();
+      // } else {
+      //   document.exitFullscreen();
+      // }
     });
 
     // Ajuste dynamiquement le nombre de lignes de log-table en plein écran
