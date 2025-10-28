@@ -11,6 +11,10 @@ export class LogMap extends HTMLElement {
 
   connectedCallback() {
     this.render();
+    // Active tous les tooltips Bootstrap sur la page
+    // Initialise tous les tooltips du composant
+    this.destroyTooltips();
+    this.initTooltips();
     this.initMap();
     this.setupEventListeners();
   }
@@ -46,25 +50,74 @@ export class LogMap extends HTMLElement {
                 pointer-events: auto;   /* <-- Permet les clics */
                 cursor: pointer;        /* Optionnel : curseur main */
             }    
-            .map-overlay-label {
+            .map-overlay-bottom {
                 position: absolute;
-                left: 50%;
+                left: 0;
+                right: 0;
                 bottom: 20px;
-                transform: translateX(-50%);
                 z-index: 1100;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                padding: 0 18px;
+              /*  pointer-events: none;  pour que seuls les boutons soient cliquables */
+            }
+            .map-overlay-label {
                 background: #1a6dcc;
                 color: #fff;
                 padding: 8px 20px;
                 border-radius: 12px;
                 font-size: 1.1em;
-                pointer-events: none;
-                text-align: center;
                 min-width: 120px;
-                max-width: 80vw;
+                max-width: 60vw;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-            }                    
+                pointer-events: auto;
+                text-align: left;
+            }
+            .map-buttons {
+            /*    display: flex;
+                gap: 0.5rem;
+                pointer-events: auto;
+                Ci dessous test */
+                position: absolute;
+                bottom: 10px;
+                right: 10px;
+                z-index: 1000;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 8px;
+                border-radius: 50px;
+                display: flex;
+                gap: 8px;
+                box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+
+            }
+            .map-buttons button {
+                /*padding: 0.25rem 0.5rem;
+                font-size: 1.1em;
+                ci dessous test */
+                width: 42px;
+                height: 42px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: none;
+                background: #1a6dcc;
+                color: white;
+                transition: all 0.3s;
+                font-size: 1.1rem;                
+            }
+          /*  .map-buttons button:hover {
+                background: #0a2540;
+                transform: scale(1.08);
+            }        */   
+            .tooltip {
+            z-index: 3000 !important;
+            }                 
             :host {
                 display: block;
             }            
@@ -72,7 +125,23 @@ export class LogMap extends HTMLElement {
             <div id="map-pm">
                 <img id="left-arrow" class="map-arrow-overlay" src="./static/images/left-arrow.png" alt="arrow left" />  
                 <img id="right-arrow" class="map-arrow-overlay-right" src="./static/images/right-arrow.png" alt="arrow right" />  
-                <div id="map-overlay-label" class="map-overlay-label"></div>
+                <div class="map-overlay-bottom">
+                    <div id="map-overlay-label" class="map-overlay-label"></div>
+                    <div class="map-buttons">
+                        <button id="fullmap-btn" 
+                            class="btn btn-light btn-sm ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Full map">
+                            <img src="./static/icons/map-scale.png" style="width: 22px; height: 22px;" />
+                        </button>
+                        <button id="flyxc-btn" 
+                            class="btn btn-light btn-sm ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="FlyXC">
+                            <img src="./static/icons/map-flyxc.png" style="width: 22px; height: 22px;" />
+                        </button>
+                        <button id="analyze-btn" 
+                            class="btn btn-light btn-sm ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Analyze">
+                            <img src="./static/icons/map-analyze.png" style="width: 22px; height: 22px;" />
+                        </button>
+                    </div>
+                </div>
             </div>   
         `;
     }
@@ -101,6 +170,23 @@ export class LogMap extends HTMLElement {
                 }));
             });
         }
+        document.getElementById('fullmap-btn').addEventListener('click', () => {
+            const btn = document.getElementById('fullmap-btn');
+            if (btn) btn.blur();
+            alert('fullmap clicked');
+        });
+
+        document.getElementById('flyxc-btn').addEventListener('click', () => {
+            const btn = document.getElementById('flyxc-btn');
+            if (btn) btn.blur();
+            alert('flyxc clicked');
+        });
+
+        document.getElementById('analyze-btn').addEventListener('click', () => {
+            const btn = document.getElementById('analyze-btn');
+            if (btn) btn.blur();
+            alert('analyze clicked');
+        }); 
     }  
     
     rowSelectedHandler = (event) => {
@@ -238,7 +324,34 @@ export class LogMap extends HTMLElement {
             this.map.removeLayer(this.endMarker);
             this.endMarker = null;
         } 
-    }       
+    }   
+    
+    destroyTooltips() {
+    const tooltips = this.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(el => {
+        const instance = bootstrap.Tooltip.getInstance(el);
+        if (instance) {
+            instance.dispose();
+        }
+    });
+    }
+
+    initTooltips() {
+        const tooltipTriggerList = [].slice.call(this.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+
+    // destroyAndReinitTooltips() {
+    //     const tooltips = this.querySelectorAll('[data-bs-toggle="tooltip"]');
+    //     tooltips.forEach(el => {
+    //         const instance = bootstrap.Tooltip.getInstance(el);
+    //         if (instance) instance.dispose();
+    //         // Ré-initialise le tooltip
+    //         new bootstrap.Tooltip(el);
+    //     });
+    // }    
 }
 
 customElements.define('log-map', LogMap);
