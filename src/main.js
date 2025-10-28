@@ -39,6 +39,7 @@ const createWindow = async () => {
     width: 1280,
     height: 720,
     fullscreen: !!fullscreen,
+    fullscreenable: true, // nécessaire sous MacOS
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       sandbox: false,
