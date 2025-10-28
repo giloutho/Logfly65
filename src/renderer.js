@@ -29,7 +29,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 function renderRoute() {
-  const hash = window.location.hash.replace('#', '') || 'settings';
+  const hash = window.location.hash.replace('#', '') || 'home';
   console.log('RenderRoute i18n ', i18n);
   loadRoute(hash, app, i18n);
 }
