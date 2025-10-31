@@ -436,15 +436,17 @@ export class LogMap extends HTMLElement {
 
     async askElevationData() {
         console.log('LogMap - askElevationData for : ', this.dbFlight.V_Track.fixes.length, ' fixes');
+        this.showDownloadInProgress();
         const params = {
             invoketype: 'igc:elevation-data',
             args: {
                 fixes : this.dbFlight.V_Track.fixes
             }
         }
-        const resElevation = await window.electronAPI.invoke(params);                        
+        const resElevation = await window.electronAPI.invoke(params);
+        this.restoreOverlayLabel();
         if (resElevation.success) {
-            console.log('Elevation data received : ', resElevation.elevations.length, ' alti sol');
+            console.log('Elevation data received : ', resElevation.elevations.length, ' alti');
             return {                
                 success: true,
                 elevations: resElevation.elevations
