@@ -35,6 +35,7 @@
     "leaflet": "^1.9.4",
     "read-last-lines": "^1.8.0",
     "serialport": "^13.0.0",
+    "srtm-elevation": "^2.1.2",
     "zoned-date-time": "^1.1.0"
   },
   "devDependencies": {
