@@ -26,10 +26,6 @@ if (require('electron-squirrel-startup')) {
 }
 
 const createWindow = async () => {
-  let fullscreen = store.get('fullscreen');
-  if (fullscreen === undefined || fullscreen === null || fullscreen === 'no') {
-    fullscreen = false;
-  }
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     // Résolutions écran les plus courantes
@@ -38,8 +34,6 @@ const createWindow = async () => {
     // Écran ordinateur de bureau / 5:4 (SXGA) / 1280 × 1024 px
     width: 1280,
     height: 720,
-    fullscreen: !!fullscreen,
-    fullscreenable: true, // nécessaire sous MacOS
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       sandbox: false,

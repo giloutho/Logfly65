@@ -188,12 +188,12 @@ export class AppMenu extends HTMLElement {
 
     // Ajout du comportement toggle plein écran
     this.querySelector('#fullscreen-toggle').addEventListener('click', async () => {
-      window.electronAPI.toggleFullscreen();
-      // if (!document.fullscreenElement) {
-      //   document.documentElement.requestFullscreen();
-      // } else {
-      //   document.exitFullscreen();
-      // }
+     // window.electronAPI.toggleFullscreen();
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
     });
 
     // Ajuste dynamiquement le nombre de lignes de log-table en plein écran
