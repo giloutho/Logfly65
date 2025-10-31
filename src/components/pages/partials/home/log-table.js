@@ -294,7 +294,7 @@ export class LogTable extends HTMLElement {
       }
   }
 
-  async readIgcFromDb(flightId) {
+    async readIgcFromDb(flightId) {
       const reqSQL =`SELECT V_IGC, V_LatDeco, V_LongDeco, V_AltDeco, V_Site FROM Vol WHERE V_ID = ${flightId}`;
       try {
           const params = {
@@ -346,8 +346,8 @@ export class LogTable extends HTMLElement {
               success: false,
               message: err.message || 'Error executing readIgcFromDb',
           }
-      }   
-  }  
+      }         
+    }  
 
     handleComUpdated = async (event) => {
       const { rowIndex,V_ID, V_Commentaire } = event.detail;

@@ -1,7 +1,11 @@
+import "../leaflet/fullmap-track.js";
+
 export class LogMap extends HTMLElement {
   constructor() {
     super();
-    this.map = null;                
+    this.map = null;  
+    this.dbFlight = null;    
+    this.flightLabel = null;          
     this.geoJsonLayer = null;      
     this.startIcon = null;
     this.endIcon = null;
@@ -64,6 +68,9 @@ export class LogMap extends HTMLElement {
                 padding: 0 18px;
               /*  pointer-events: none;  pour que seuls les boutons soient cliquables */
             }
+            body.modal-open .map-overlay-bottom {
+            display: none !important;
+            }            
             .map-overlay-label {
                 background: #1a6dcc;
                 color: #fff;
@@ -143,6 +150,26 @@ export class LogMap extends HTMLElement {
                     </div>
                 </div>
             </div>   
+            <div class="modal fade" id="fullmapModal" tabindex="-1" aria-labelledby="fullmapModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content">
+                    <div class="modal-header d-flex align-items-center justify-content-between">
+                    <h6 class="modal-title" id="fullmapModalLabel">Carte en plein écran</h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    </div>
+                  <div class="modal-body" id="fullmap-modal-body">
+                    <!-- Ici tu peux mettre une carte Leaflet, une image, etc. 
+                    <div id="fullmap-leaflet" style="width:100%;height:90vh;"></div>. -->
+                        <fullmap-track></fullmap-track>
+                  </div>
+                </div>
+              </div>
+            </div>
         `;
     }
 
@@ -173,19 +200,19 @@ export class LogMap extends HTMLElement {
         document.getElementById('fullmap-btn').addEventListener('click', () => {
             const btn = document.getElementById('fullmap-btn');
             if (btn) btn.blur();
-            alert('fullmap clicked');
+            this.openFullMapModal();
         });
 
         document.getElementById('flyxc-btn').addEventListener('click', () => {
             const btn = document.getElementById('flyxc-btn');
             if (btn) btn.blur();
-            alert('flyxc clicked');
+            this.showDownloadInProgress()
         });
 
         document.getElementById('analyze-btn').addEventListener('click', () => {
             const btn = document.getElementById('analyze-btn');
             if (btn) btn.blur();
-            alert('analyze clicked');
+            this.restoreOverlayLabel()
         }); 
     }  
     
@@ -194,10 +221,13 @@ export class LogMap extends HTMLElement {
         this.selectedRowData = rowData;
         this.rowIndex = event.detail.rowIndex;           
         // console.log(`Row index : ${this.rowIndex} - Id_Vol: ${rowData.V_ID} - Engin: ${rowData.V_Engin} - Date: ${rowData.Day} ${rowData.Hour}`);
-        
-        const flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
+
+        this.flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
         const overlay = this.querySelector('#map-overlay-label');
-        if (overlay) overlay.textContent = flightLabel;
+        if (overlay) overlay.textContent = this.flightLabel;
+
+        const modalTitle = document.getElementById('fullmapModalLabel');
+        if (modalTitle) modalTitle.textContent = this.flightLabel;
 
         this.dbFlight = event.detail.dbFlight;
         if (
@@ -210,7 +240,7 @@ export class LogMap extends HTMLElement {
         } else {
             // Si GeoJSON est absent ou null
             console.log('Pas de trace pour ce vol');
-            this.mapNotrack(this.dbFlight);
+            this.mapNotrack();
         }
     }; 
     
@@ -223,22 +253,22 @@ export class LogMap extends HTMLElement {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(this.map);    
-            this.startIcon = new L.Icon({
-                iconUrl: './static/images/windsock22.png',
-                shadowUrl: './static/images/marker-shadow.png',
-                iconSize: [22, 22],
-                iconAnchor: [0, 22],
-                popupAnchor: [1, -34],
-                shadowSize: [25, 25]
-            })     
-            this.endIcon = new L.Icon({
-                iconUrl: './static/images/arrivee22.png',
-                shadowUrl: './static/images/marker-shadow.png',
-                iconSize: [18, 18],
-                iconAnchor: [4, 18],
-                popupAnchor: [1, -34],
-                shadowSize: [25, 25]
-            })             
+        this.startIcon = new L.Icon({
+            iconUrl: './static/images/windsock22.png',
+            shadowUrl: './static/images/marker-shadow.png',
+            iconSize: [22, 22],
+            iconAnchor: [0, 22],
+            popupAnchor: [1, -34],
+            shadowSize: [25, 25]
+        })     
+        this.endIcon = new L.Icon({
+            iconUrl: './static/images/arrivee22.png',
+            shadowUrl: './static/images/marker-shadow.png',
+            iconSize: [18, 18],
+            iconAnchor: [4, 18],
+            popupAnchor: [1, -34],
+            shadowSize: [25, 25]
+        })             
     }
     
     mapWithTrack(trackGeojson) {
@@ -284,14 +314,14 @@ export class LogMap extends HTMLElement {
         }
     }   
     
-    mapNotrack(dbFlight) {
+    mapNotrack() {
         this.cleanMap();
-        const latDeco = dbFlight.V_LatDeco || 45.863; // A compléter par les setings
-        const longDeco = dbFlight.V_LongDeco || 6.1725;
+        const latDeco = this.dbFlight.V_LatDeco || 45.863; // A compléter par les setings
+        const longDeco = this.dbFlight.V_LongDeco || 6.1725;
         if (this.map) {
             this.map.setView([latDeco, longDeco], 12);
-        }        
-        const takeOffPopUp = dbFlight.V_Site+'<br>'+dbFlight.V_AltDeco+'m'
+        }
+        const takeOffPopUp = this.dbFlight.V_Site+'<br>'+this.dbFlight.V_AltDeco+'m'
         const startLatlng = L.latLng(latDeco, longDeco)
         this.startMarker = L.marker(startLatlng,{icon: this.startIcon}).addTo(this.map).bindPopup(takeOffPopUp).openPopup()
     }  
@@ -325,6 +355,122 @@ export class LogMap extends HTMLElement {
             this.endMarker = null;
         } 
     }   
+
+    async openFullMapModal() {
+        if (
+            this.dbFlight &&
+            this.dbFlight.V_Track &&
+            this.dbFlight.V_Track.GeoJSON
+        ) {
+        const analyzeResult = await this.getIgcAnalyze();
+        if (analyzeResult && analyzeResult.success) {
+            const elevationData = await this.askElevationData();
+            // if (elevationData && elevationData.success) {
+            //     console.log('Données d\'élévation mises à jour avec succès.');
+            //     // Met à jour les fixes avec les données d'élévation
+            //     this.dbFlight.V_Track.fixes = elevationData.updatedFixes;
+            // } else {
+            //     console.warn('Échec de la récupération des données d\'élévation :', elevationData ? elevationData.message : 'Erreur inconnue');
+            // }
+        } else {
+            // Analyse échouée
+            console.warn('Analyse IGC échouée :', analyzeResult ? analyzeResult.message : 'Erreur inconnue');
+        }
+        // Fullmap uniquement si trace disponible
+        // Met à jour le titre à l'ouverture
+        const modalTitle = document.getElementById('fullmapModalLabel');
+        if (modalTitle) {
+            // Utilise le dernier flightLabel connu
+            modalTitle.textContent = this.selectedRowData
+            ? this.selectedRowData.Day + ' ' + this.selectedRowData.V_Site + ' ' + this.selectedRowData.Duree + ' ' + this.selectedRowData.V_Engin
+            : '';
+        }
+        const modalBody = document.getElementById('fullmap-modal-body');
+        const fsBtn = document.getElementById('modal-fullscreen-btn');
+        if (fsBtn && modalBody) {
+        fsBtn.addEventListener('click', () => {
+                if (modalBody.requestFullscreen) {
+                    modalBody.requestFullscreen();
+                } else if (modalBody.webkitRequestFullscreen) { // Safari
+                    modalBody.webkitRequestFullscreen();
+                }
+            });
+        }
+
+        // Affiche la modale
+        const modal = new bootstrap.Modal(document.getElementById('fullmapModal'));
+        modal.show();
+
+        // setTimeout pour laisser le temps à la modale d’être visible avant de mettre à jour la carte
+        // leaflet a besoin que le conteneur soit visible pour bien s’initialiser
+        setTimeout(() => {
+            const fullmapTrack = document.querySelector('fullmap-track');
+            if (fullmapTrack) {
+                fullmapTrack.flightData = this.dbFlight; 
+                fullmapTrack.flightAnalyze = analyzeResult.success ? analyzeResult.anaTrack : null;
+                if (fullmapTrack.fullmap) {
+                    fullmapTrack.fullmap.invalidateSize();
+                }
+            }
+        }, 300); 
+        } 
+    }
+
+    async getIgcAnalyze() {
+        console.log('LogMap - getIgcAnalyze for : ', this.dbFlight.V_Track.fixes.length, ' fixes');
+        const params = {
+            invoketype: 'igc:analyzing',
+            args: {
+                fixes : this.dbFlight.V_Track.fixes
+            }
+        }
+        const resAnalyze = await window.electronAPI.invoke(params);                        
+        if (resAnalyze.success) {
+            return {
+                success: true,
+                anaTrack: resAnalyze.anatrack
+            }
+        }
+        return {    success: false, message: 'Failed to analyze IGC data' };
+    }
+
+    async askElevationData() {
+        console.log('LogMap - askElevationData for : ', this.dbFlight.V_Track.fixes.length, ' fixes');
+        const params = {
+            invoketype: 'igc:elevation-data',
+            args: {
+                fixes : this.dbFlight.V_Track.fixes
+            }
+        }
+        const resElevation = await window.electronAPI.invoke(params);                        
+        if (resElevation.success) {
+            console.log('Elevation data received : ', resElevation.elevations.length, ' alti sol');
+            return {                
+                success: true,
+                elevations: resElevation.elevations
+            }
+        }
+        return {    success: false, message: 'Failed to get elevation data' };
+    }   
+
+
+
+    showDownloadInProgress() {
+        const overlay = this.querySelector('#map-overlay-label');
+        if (overlay) {
+            const waitingMsg = 'Downloading digital elevation data...';
+            overlay.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${waitingMsg}`;
+            overlay.style.background = '#d32f2f'; 
+        }
+    }
+
+    restoreOverlayLabel() {
+        const overlay = this.querySelector('#map-overlay-label');
+        if (overlay) {
+            overlay.textContent = this.flightLabel;
+            overlay.style.background = '#1a6dcc'; // couleur d'origine
+        }
+    }    
     
     destroyTooltips() {
     const tooltips = this.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -342,16 +488,6 @@ export class LogMap extends HTMLElement {
             new bootstrap.Tooltip(tooltipTriggerEl);
         });
     }
-
-    // destroyAndReinitTooltips() {
-    //     const tooltips = this.querySelectorAll('[data-bs-toggle="tooltip"]');
-    //     tooltips.forEach(el => {
-    //         const instance = bootstrap.Tooltip.getInstance(el);
-    //         if (instance) instance.dispose();
-    //         // Ré-initialise le tooltip
-    //         new bootstrap.Tooltip(el);
-    //     });
-    // }    
 }
 
 customElements.define('log-map', LogMap);
