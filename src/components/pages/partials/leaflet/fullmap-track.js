@@ -13,6 +13,7 @@ class FullmapTrack extends HTMLElement {
         this.startMarker = null; 
         this.endMarker = null; 
         this.hoverMarker = null;
+        this.uplot = null;
     }
 
     connectedCallback() {
@@ -42,12 +43,19 @@ class FullmapTrack extends HTMLElement {
                     right: 0;
                     bottom: 150px; /* doit correspondre à la hauteur de #graph */
                     z-index: 2000;
-                    background: rgba(248, 248, 248, 0.7);
-                    font-size: 1em;
-                    border-bottom: 1px solid #ddd;
-                    padding: 4px 8px;
-                    margin: 0;
-                    pointer-events: none; /* pour ne pas gêner les interactions carte */
+                    background: rgba(255, 255, 255, 0.92);
+                    font-size: 1.08em;
+                    font-weight: 500;
+                    color: #333;
+                    border-radius: 8px 8px 0 0;
+                    border-bottom: 1px solid #bbb;
+                    padding: 8px 18px;
+                    margin: 0 20px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    pointer-events: none;
+                    letter-spacing: 0.02em;
+                    text-align: center;
+                    transition: background 0.2s;
                 }
                 #graph {
                     position: absolute;
@@ -119,8 +127,6 @@ class FullmapTrack extends HTMLElement {
             baseMaps.OSM.addTo(this.fullmap);  
             break  
         }            
-
-
         // Ajouter la couche sélectionnée par défaut
         const selectedLayer = baseMaps[defaultMap];
         if (selectedLayer) {
@@ -151,7 +157,7 @@ class FullmapTrack extends HTMLElement {
         console.log('Mise à jour de flightAnalyze dans FullmapTrack :', this._flightAnalyze.bestGain);        
         console.log('Réception elevation dans FullmapTrack :', this._flightAnalyze.elevations.length, ' points');
         // flightAnalyze contient l'objet d'analyse du vol
-        // Ici tu peux déclencher un rendu ou une mise à jour de la carte
+        // flightData et FlightAnalyze chargés, on peut mettre à jour la carte
         this.updateMap();
     }
 
@@ -215,7 +221,6 @@ class FullmapTrack extends HTMLElement {
         // times contained in the GeoJSon are only strings
         // conversion to date object is necessary for Highcharts.dateFormat to work on the x axis
         const arrayHour = feature['properties']['coordTimes'].map(hour => new Date(hour));
-          console.log('arrayHour 50 ex '+arrayHour[50]+' type '+typeof(arrayHour[50]))
         const x = arrayHour.map(date => date.getTime());
         const y1 = arrayAlti;
         // Si arraySol n'est pas de la bonne taille, on le remplit avec null ou undefined
@@ -256,7 +261,7 @@ class FullmapTrack extends HTMLElement {
                 ]
             };
             const data = [x, y1, y2.length ? y2 : new Array(y1.length).fill(null)];
-            const uplot = new uPlot(options, data, graphDiv);
+            this.uplot = new uPlot(options, data, graphDiv);
 
             const graphInfoDiv = this.querySelector('#graph-info');
             if (graphInfoDiv) {
@@ -264,15 +269,23 @@ class FullmapTrack extends HTMLElement {
             }
 
             // Affichage dynamique de l'info au survol
-            uplot.root.addEventListener('mousemove', e => {
-                const idx = uplot.cursor.idx;
+            this.uplot.root.addEventListener('mousemove', e => {
+                const idx = this.uplot.cursor.idx;
                 if (idx != null && idx >= 0 && idx < x.length) {
                     const heure = arrayHour[idx];
                     const alt = y1[idx];
                     const sol = y2[idx];
-                    graphInfoDiv.textContent = 
-                        `Time: ${heure.getUTCHours().toString().padStart(2, '0')}:${heure.getUTCMinutes().toString().padStart(2, '0')} | Altitude: ${alt} m | Altitude sol: ${sol}`;
-
+                   // console.log(this._flightData.V_Track.vz[idx].toFixed(2)+'m/s  '+this._flightData.V_Track.speed[idx].toFixed(0)+' km/h')
+                    graphInfoDiv.innerHTML =
+                        `<span style="color:#1a6dcc;font-weight:bold;">🕒 ${heure.getUTCHours().toString().padStart(2, '0')}:${heure.getUTCMinutes().toString().padStart(2, '0')}</span>
+                        &nbsp;|&nbsp;
+                        <span style="color:#1976d2;">⛰️ ${alt} m</span>
+                        &nbsp;|&nbsp;
+                        <span style="color:Sienna;">🟫 ${sol} m</span>
+                        &nbsp;|&nbsp;
+                        <span style="color:#388e3c;">⬇️ ${this._flightData.V_Track.vz[idx].toFixed(2)} m/s</span>
+                        &nbsp;|&nbsp;
+                        <span style="color:#e65100;">➡️ ${this._flightData.V_Track.speed[idx].toFixed(0)} km/h</span>`;
                     // Récupère la position correspondante dans le GeoJSON
                     const feature = this._flightData.V_Track.GeoJSON.features[0];
                     const coords = feature.geometry.coordinates;
@@ -296,8 +309,8 @@ class FullmapTrack extends HTMLElement {
             });
 
             // Ajoute un événement au clic sur le graphe
-            uplot.root.addEventListener('click', (e) => {
-                const idx = uplot.cursor.idx;
+            this.uplot.root.addEventListener('click', (e) => {
+                const idx = this.uplot.cursor.idx;
                 if (idx != null && idx >= 0 && idx < x.length) {
                    // Récupère la position correspondante dans le GeoJSON
                     const feature = this._flightData.V_Track.GeoJSON.features[0];
