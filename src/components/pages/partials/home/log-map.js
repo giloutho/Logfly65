@@ -3,6 +3,7 @@ import "../leaflet/fullmap-track.js";
 export class LogMap extends HTMLElement {
   constructor() {
     super();
+    this.i18n = {} // initialisé par le parent
     this.map = null;  
     this.dbFlight = null;    
     this.flightLabel = null;          
@@ -118,10 +119,31 @@ export class LogMap extends HTMLElement {
                 transition: all 0.3s;
                 font-size: 1.1rem;                
             }
-          /*  .map-buttons button:hover {
-                background: #0a2540;
-                transform: scale(1.08);
-            }        */   
+            .modal-header {
+                padding-top: 0.3rem !important;
+                padding-bottom: 0.3rem !important;
+                min-height: 0 !important;
+            }
+            .modal-title {
+                font-size: 1.1rem !important;
+                margin: 0 !important;
+                line-height: 1.2 !important;
+            }
+            .modal-body, #fullmap-modal-body {
+                height: 100%;
+                min-height: 0;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }         
+            fullmap-track {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                min-height: 0;
+            }   
             .tooltip {
             z-index: 3000 !important;
             }                 
@@ -365,13 +387,12 @@ export class LogMap extends HTMLElement {
         const analyzeResult = await this.getIgcAnalyze();
         if (analyzeResult && analyzeResult.success) {
             const elevationData = await this.askElevationData();
-            // if (elevationData && elevationData.success) {
-            //     console.log('Données d\'élévation mises à jour avec succès.');
-            //     // Met à jour les fixes avec les données d'élévation
-            //     this.dbFlight.V_Track.fixes = elevationData.updatedFixes;
-            // } else {
-            //     console.warn('Échec de la récupération des données d\'élévation :', elevationData ? elevationData.message : 'Erreur inconnue');
-            // }
+            if (elevationData && elevationData.success) {
+                analyzeResult.anaTrack.elevations = elevationData.elevations;
+                console.log('OpenFullMapModal analyzeResult.anaTrack.elevations', analyzeResult.anaTrack.elevations.length, ' alti');
+            } else {
+                console.warn('Échec de la récupération des données d\'élévation :', elevationData ? elevationData.message : 'Erreur inconnue');
+             }
         } else {
             // Analyse échouée
             console.warn('Analyse IGC échouée :', analyzeResult ? analyzeResult.message : 'Erreur inconnue');
@@ -406,6 +427,7 @@ export class LogMap extends HTMLElement {
         setTimeout(() => {
             const fullmapTrack = document.querySelector('fullmap-track');
             if (fullmapTrack) {
+                fullmapTrack.i18n = this.i18n;
                 fullmapTrack.flightData = this.dbFlight; 
                 fullmapTrack.flightAnalyze = analyzeResult.success ? analyzeResult.anaTrack : null;
                 if (fullmapTrack.fullmap) {
@@ -435,7 +457,6 @@ export class LogMap extends HTMLElement {
     }
 
     async askElevationData() {
-        console.log('LogMap - askElevationData for : ', this.dbFlight.V_Track.fixes.length, ' fixes');
         this.showDownloadInProgress();
         const params = {
             invoketype: 'igc:elevation-data',
@@ -490,6 +511,10 @@ export class LogMap extends HTMLElement {
             new bootstrap.Tooltip(tooltipTriggerEl);
         });
     }
+
+    setI18n(i18n) {
+        this.i18n = i18n;
+    }  
 }
 
 customElements.define('log-map', LogMap);
