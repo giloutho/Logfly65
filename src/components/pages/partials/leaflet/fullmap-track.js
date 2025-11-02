@@ -12,6 +12,7 @@ class FullmapTrack extends HTMLElement {
         this._geojsonLayer = null;
         this.startMarker = null; 
         this.endMarker = null; 
+        this.hoverMarker = null;
     }
 
     connectedCallback() {
@@ -237,9 +238,9 @@ class FullmapTrack extends HTMLElement {
                     { label: "Altitude", stroke: "blue", width: 2 },
                     { 
                         label: "Altitude sol",
-                        stroke: "red",
+                        stroke: "Sienna",
                         width: 2,
-                        fill: "rgba(255,0,0,0.2)" // Remplissage sous la courbe
+                        fill: "rgba(160, 82, 45, 0.18)" // Remplissage sous la courbe
                     }
                 ],
                 axes: [
@@ -271,6 +272,26 @@ class FullmapTrack extends HTMLElement {
                     const sol = y2[idx];
                     graphInfoDiv.textContent = 
                         `Time: ${heure.getUTCHours().toString().padStart(2, '0')}:${heure.getUTCMinutes().toString().padStart(2, '0')} | Altitude: ${alt} m | Altitude sol: ${sol}`;
+
+                    // Récupère la position correspondante dans le GeoJSON
+                    const feature = this._flightData.V_Track.GeoJSON.features[0];
+                    const coords = feature.geometry.coordinates;
+                    const coord = coords[idx];
+                    if (coord) {
+                        const latlng = [coord[1], coord[0]]; // [lat, lng]
+                        // Supprime l'ancien marker de survol s'il existe
+                        if (this.hoverMarker) {
+                            this.fullmap.removeLayer(this.hoverMarker);
+                        }
+                        // Ajoute un nouveau marker (ou déplace l'existant)
+                        this.hoverMarker = L.circleMarker(latlng, {
+                            radius: 7,
+                            color: 'orange',
+                            fillColor: 'yellow',
+                            fillOpacity: 0.8,
+                            weight: 2
+                        }).addTo(this.fullmap);
+                    }
                 }
             });
 
@@ -278,16 +299,38 @@ class FullmapTrack extends HTMLElement {
             uplot.root.addEventListener('click', (e) => {
                 const idx = uplot.cursor.idx;
                 if (idx != null && idx >= 0 && idx < x.length) {
-                    // Par exemple, tu peux déclencher une action ou un événement personnalisé
-                    const heure = arrayHour[idx];
-                    const alt = y1[idx];
-                    const sol = y2[idx];
-                    console.log('Clic sur le graph à l’index', idx, 'Heure:', heure, 'Altitude:', alt, 'Sol:', sol);
+                   // Récupère la position correspondante dans le GeoJSON
+                    const feature = this._flightData.V_Track.GeoJSON.features[0];
+                    const coords = feature.geometry.coordinates;
+                    const coord = coords[idx];
+                    if (coord) {
+                        const latlng = [coord[1], coord[0]]; // [lat, lng]
+                        // Supprime l'ancien marker de survol s'il existe
+                        if (this.hoverMarker) {
+                            this.fullmap.removeLayer(this.hoverMarker);
+                        }
+                        // Ajoute un nouveau marker (ou déplace l'existant)
+                        this.hoverMarker = L.circleMarker(latlng, {
+                            radius: 7,
+                            color: 'orange',
+                            fillColor: 'yellow',
+                            fillOpacity: 0.8,
+                            weight: 2
+                        }).addTo(this.fullmap);
+                    }
 
-                    // Exemple : émettre un événement personnalisé
-                    this.dispatchEvent(new CustomEvent('graph-click', {
-                        detail: { idx, heure, alt, sol }
-                    }));
+                    this.fullmap.panTo(this.hoverMarker.getLatLng())
+
+                    // // Par exemple, tu peux déclencher une action ou un événement personnalisé
+                    // const heure = arrayHour[idx];
+                    // const alt = y1[idx];
+                    // const sol = y2[idx];
+                    // console.log('Clic sur le graph à l’index', idx, 'Heure:', heure, 'Altitude:', alt, 'Sol:', sol);
+
+                    // // Exemple : émettre un événement personnalisé
+                    // this.dispatchEvent(new CustomEvent('graph-click', {
+                    //     detail: { idx, heure, alt, sol }
+                    // }));
                 }
             });
         }
