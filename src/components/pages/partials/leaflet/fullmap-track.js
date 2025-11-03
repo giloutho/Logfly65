@@ -91,17 +91,21 @@ class FullmapTrack extends HTMLElement {
                     font-size: 0.9em;
                 }
                 .info-popup-header {
-                    background: #007bff;
-                    color: white;
-                    padding: 10px;
-                    cursor: pointer;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
+                background: #fff;
+                color: #222;
+                padding: 4px 10px; /* Hauteur réduite */
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border: 3px solid #0837f5ff;
+                border-radius: 8px 8px 0 0;
+                box-sizing: border-box;
                 }
                 .info-popup-title {
                     margin: 0;
                     font-weight: 500;
+                    font-size: 1.3em; /* augmente la taille, ajuste selon besoin */
                 }
                 .info-popup-arrow {
                     font-size: 1.2em;
