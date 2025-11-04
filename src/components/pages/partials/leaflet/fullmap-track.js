@@ -5,7 +5,7 @@ import {  trackOptions, thermOptions, glideOptions, StartIcon, EndIcon } from '.
 class FullmapTrack extends HTMLElement {
     constructor() {
         super();
-        this.i18n = {} // initialisé par le parent
+        this._i18n = {} // initialisé par le parent
         this.fullmap = null; 
         this._flightData = null; 
         this._feature = null
@@ -97,8 +97,36 @@ class FullmapTrack extends HTMLElement {
         `;
     }
 
-    setupEventListeners(){
-        // Écouteur d'événements ou autres configurations si nécessaire
+    setupEventListeners() {
+        document.addEventListener('click', (e) => {
+            // Segment
+            const segmentLink = e.target.closest('.segment-link');
+            if (segmentLink) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Segment link clicked');
+                const coords = JSON.parse(segmentLink.getAttribute('data-segment'));
+                console.log('Coords for segment:', coords);
+                this.displaySegment(coords);
+                return;
+            }
+            // Décollage
+            const takeoffLink = e.target.closest('.takeoff-link');
+            if (takeoffLink) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.displayTakeOff();
+                return;
+            }
+            // Atterrissage
+            const landingLink = e.target.closest('.landing-link');
+            if (landingLink) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.displayLanding();
+                return;
+            }
+        });
     }
 
     async initMap() {
@@ -172,8 +200,8 @@ class FullmapTrack extends HTMLElement {
 
     set flightAnalyze(value) {
         this._flightAnalyze = value;
-        console.log('Mise à jour de flightAnalyze dans FullmapTrack :', this._flightAnalyze.bestGain);        
-        console.log('Réception elevation dans FullmapTrack :', this._flightAnalyze.elevations.length, ' points');
+        // console.log('Mise à jour de flightAnalyze dans FullmapTrack :', this._flightAnalyze.bestGain);        
+        // console.log('Réception elevation dans FullmapTrack :', this._flightAnalyze.elevations.length, ' points');
         // flightAnalyze contient l'objet d'analyse du vol
         // flightData et FlightAnalyze chargés, on peut mettre à jour la carte
         this.updateMap();
@@ -183,6 +211,14 @@ class FullmapTrack extends HTMLElement {
     get flightAnalyze() {
         return this._flightAnalyze;
     }   
+
+    get i18n() {
+        return this._i18n;
+    }
+
+    set i18n(value) {
+        this._i18n = value;
+    }
 
     updateMap() {
         if (!this._flightData.V_Track.GeoJSON) return;
@@ -364,9 +400,30 @@ class FullmapTrack extends HTMLElement {
     }
 
     updateHeader() {
-        const dropdownMenu = document.getElementById('info-dropdown-menu');
-        if (dropdownMenu) {
-            dropdownMenu.innerHTML = this.generateInfoSections();
+        // Met à jour le contenu des dropdowns
+        const infoBtn = document.getElementById('info-dropdown-btn');
+        if (infoBtn) {
+            infoBtn.textContent = this.gettext('Infos');
+        }
+        const infoDropdownMenu = document.getElementById('info-dropdown-menu');
+        if (infoDropdownMenu) {
+            infoDropdownMenu.innerHTML = this.generateInfoSections();
+        }
+        const chronoBtn = document.getElementById('chrono-dropdown-btn');
+        if (chronoBtn) {
+            chronoBtn.textContent = this.gettext('Pathway');
+        }        
+        const chronoDropdownMenu = document.getElementById('chrono-dropdown-menu');
+        if (chronoDropdownMenu) {
+            chronoDropdownMenu.innerHTML = this.generateChronoSections();
+        }
+        const checkBtn = document.getElementById('check-dropdown-btn');
+        if (checkBtn) {
+            checkBtn.textContent = this.gettext('Check');
+        }
+        const scoreBtn = document.getElementById('score-dropdown-btn');
+        if (scoreBtn) {
+            scoreBtn.textContent = this.gettext('Score');
         }
     }
 
@@ -527,16 +584,165 @@ class FullmapTrack extends HTMLElement {
         `;
     }
 
+    generateChronoSections() {
+        let htmlText = /*html */ `
+                <div>
+                <table style="width:100%; border-collapse:collapse; font-size:1em;">
+                    <thead>
+                    <tr style="background:#f8f9fa;">
+                        <th style="padding:8px 6px; text-align:left;">${this.gettext('Heure')}</th>
+                        <th style="padding:8px 6px; text-align:left;">${this.gettext('Ecoulé')}</th>
+                        <th style="padding:8px 6px; text-align:left;">${this.gettext('Alt')}</th>
+                        <th style="padding:8px 6px; text-align:left;"></th>
+                        <th style="padding:8px 6px; text-align:left;"></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+        let rowIndex = 0;
+        for (let cr of this._flightAnalyze.course) {
+            const bgColor = rowIndex % 2 === 0 ? '#f2f2f2' : '#fff';
+
+            let icon = '';
+            let label = '';
+            let info = '';
+            let link = '';
+            switch (cr.category) {
+                case 'K':
+                    icon = '<i class="bi bi-send"></i>';
+                    label = this.gettext('Décollage');
+                    info = '';
+                    link = `<a href="#" class="takeoff-link" style="color:#1976d2; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
+                        ${icon} ${label}
+                    </a>`;
+                    break;
+                case 'T':
+                    icon = '<i class="bi bi-cloud-arrow-up"></i>';
+                    label = this.gettext('Thermique');
+                    info = `[+${cr.data1}m ${(Math.round(cr.data2 * 100) / 100).toFixed(2)}m/s]`;
+                    link = `<a href="#" class="segment-link" data-segment='${JSON.stringify(cr.coords)}' style="color:#43a047; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
+                        ${icon} ${label}
+                    </a>`;
+                    break;
+                case 'G':
+                    icon = '<i class="bi bi-arrow-right"></i>';
+                    label = this.gettext('Transition');
+                    info = `[+${cr.data1}km ${cr.data2}km/h]`;
+                    link = `<a href="#" class="segment-link" data-segment='${JSON.stringify(cr.coords)}' style="color:#ff9800; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
+                        ${icon} ${label}
+                    </a>`;
+                    break;
+                case 'L':
+                    icon = '<i class="bi bi-flag"></i>';
+                    label = this.gettext('Atterrissage');
+                    info = '';
+                    link = `<a href="#" class="landing-link" style="color:#1976d2; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
+                        ${icon} ${label}
+                    </a>`;
+                    break;
+                default:
+                    label = '';
+                    info = '';
+                    link = '';
+            }
+
+            htmlText += `
+            <tr style="background:${bgColor};">
+                <td style="padding:6px 4px;">${cr.time}</td>
+                <td style="padding:6px 4px;">${cr.elapsed ?? '00:00'}</td>
+                <td style="padding:6px 4px;">${cr.alt}</td>
+                <td style="padding:6px 4px;">${link}</td>
+                <td style="padding:6px 4px; color:#444;">${info}</td>
+            </tr>
+            `;
+            rowIndex++;
+        }
+
+        htmlText += /*html */ `
+                    </tbody>
+                </table>
+                </div>
+        `;
+        return htmlText;
+    }
+
+    /*
+    J'aimerai afficher surépaissir la ligne comme on le fait dans l'affichage de tous les
+    thermiques avec le controleur
+    Dans L6 c'est un peu le bordel. Il afudrait
+        - contrôleur affiche tous les thermiques idem L6
+        - contrôleur affiche toutes les transitions idem L6
+        - clic chrono thermique enlève affichage controleur si présent et n'affiche que le thermique à zoom - 1
+        - clic chrono transition enlève affichage controleur si présent et n'affiche que la transition à zoom - 1
+        - idéalement poserait une overlay avec les infos détaillées 
+    */
+
+    displaySegment(coords) {
+        // Si coords est une chaîne, transforme-la en tableau de nombres
+        if (typeof coords === 'string') {
+            coords = coords.split(',').map(Number);
+        }
+        // Si coords est une flat list de nombres, regroupe par paires
+        if (Array.isArray(coords) && coords.length > 0 && typeof coords[0] === 'number') {
+            const points = [];
+            for (let i = 0; i < coords.length; i += 2) {
+                points.push([coords[i], coords[i + 1]]);
+            }
+            coords = points;
+        }
+        // Vérifie que coords est bien un tableau de points
+        if (!Array.isArray(coords) || coords.length === 0 || !Array.isArray(coords[0])) {
+            console.warn('coords n’est pas un tableau de points valide', coords);
+            return;
+        }
+        // Transforme en latlngs pour fitBounds ([lat, lng])
+        const latlngs = coords.map(coord => [coord[0], coord[1]]);
+
+        // Ajuste la vue pour inclure le segment
+        this.fullmap.fitBounds(latlngs);
+        // Trop serré, on recule d'un niveau de zoom
+        const currentZoom = this.fullmap.getZoom();
+      //  this.fullmap.setZoom(currentZoom - 1);
+}
+   
+
     initFullmapModalHeader() {
         const modalHeader = document.getElementById('fullmap-modal-header');
         if (modalHeader) {
             modalHeader.innerHTML = /*html */ `
-                <div class="dropdown" style="margin-left: 30px;">
-                    <button id="info-dropdown-btn" class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Infos
-                    </button>
-                    <div class="dropdown-menu p-3" id="info-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
-                        <!-- Le contenu sera injecté dynamiquement -->
+                <div style="display: flex; align-items: center; gap: 12px; margin-left: 30px;">
+                    <div class="dropdown">
+                        <button id="info-dropdown-btn" class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Infos
+                        </button>
+                        <div class="dropdown-menu p-3" id="info-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
+                            <!-- Le contenu sera injecté dynamiquement -->
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button id="chrono-dropdown-btn" class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Chrono
+                        </button>
+                        <div class="dropdown-menu p-3" id="chrono-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em; max-height:350px; overflow-y:auto;">
+                            <!-- Le contenu sera injecté dynamiquement -->
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button id="check-dropdown-btn" class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Check
+                        </button>
+                        <div class="dropdown-menu p-3" id="check-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
+                            <!-- Le contenu sera injecté dynamiquement -->
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button id="score-dropdown-btn" class="btn btn-info dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Score
+                        </button>
+                        <div class="dropdown-menu p-3" id="score-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
+                            <!-- Le contenu sera injecté dynamiquement -->
+                        </div>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -563,7 +769,7 @@ class FullmapTrack extends HTMLElement {
     }    
 
     gettext(key) {
-        return this.i18n[key] || key;
+        return this._i18n[key] || key;
     }        
 }
 
