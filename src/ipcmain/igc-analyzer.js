@@ -86,8 +86,7 @@ function IgcAnalyze(trackFixes) {
         geoTh['features'] = [];     
         let geoGlides = {};   
         geoGlides['type'] = 'FeatureCollection';
-        geoGlides['features'] = [];
-        console.log('IGCAnalyzer.compute called with ' + fixes.length + ' fixes');        
+        geoGlides['features'] = [];    
         try {
             for (let f of fixes) {
                 t.push(f.timestamp/1000)
