@@ -395,7 +395,6 @@ export class LogMap extends HTMLElement {
         setTimeout(() => {
             const fullmapTrack = document.querySelector('fullmap-track');
             if (fullmapTrack) {
-                console.log('Passing i18n ',this.i18n,' to fullmap-track');
                 fullmapTrack.i18n = this.i18n;
                 fullmapTrack.flightData = this.dbFlight; 
                 fullmapTrack.flightAnalyze = analyzeResult.success ? analyzeResult.anaTrack : null;
