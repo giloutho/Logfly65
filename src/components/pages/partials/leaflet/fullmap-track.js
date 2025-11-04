@@ -74,50 +74,7 @@ class FullmapTrack extends HTMLElement {
                     border-top: 1px solid #ddd;
                     pointer-events: auto;
                 }
-                .u-legend { display: none !important; }         
-                .info-popup {
-                    position: absolute;
-                    bottom: 160px; /* Ajuster en fonction de la hauteur de #graph-info */
-                    left: 20px;    /* Place à gauche */
-                    right: auto;   /* Annule le positionnement à droite */
-                    z-index: 3000;
-                    width: 300px;
-                    background: rgba(255, 255, 255, 0.95);
-                    border: 1px solid #ccc;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                    overflow: hidden;
-                    font-family: Arial, sans-serif;
-                    font-size: 0.9em;
-                }
-                .info-popup-header {
-                background: #fff;
-                color: #222;
-                padding: 4px 10px; /* Hauteur réduite */
-                cursor: pointer;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border: 3px solid #0837f5ff;
-                border-radius: 8px 8px 0 0;
-                box-sizing: border-box;
-                }
-                .info-popup-title {
-                    margin: 0;
-                    font-weight: 500;
-                    font-size: 1.3em; /* augmente la taille, ajuste selon besoin */
-                }
-                .info-popup-arrow {
-                    font-size: 1.2em;
-                    transition: transform 0.3s;
-                }
-                .info-popup.closed .info-popup-arrow {
-                    transform: rotate(180deg);
-                }
-                .info-popup-content {
-                    padding: 10px;
-                    display: none;
-                }
+                .u-legend { display: none !important; }    
                 .info-section {
                     margin-bottom: 10px;
                 }
@@ -136,37 +93,12 @@ class FullmapTrack extends HTMLElement {
             <div id="map">
                 <div id="graph-info"></div>
                 <div id="graph"></div>
-                <div id="info-popup" class="info-popup closed">
-                  <div class="info-popup-header" id="info-popup-toggle">
-                    <span class="info-popup-title">Infos</span>
-                    <span class="info-popup-arrow">&#x25BC;</span> <!-- flèche vers le bas -->
-                  </div>
-                    <div class="info-popup-content" id="info-popup-content"></div>
-                </div>
             </div>
         `;
     }
 
     setupEventListeners(){
         // Écouteur d'événements ou autres configurations si nécessaire
-        const infoPopupToggle = this.querySelector('#info-popup-toggle');
-        const infoPopup = this.querySelector('#info-popup');
-        if (infoPopupToggle) {
-            infoPopupToggle.addEventListener('click', () => {
-                infoPopup.classList.toggle('closed');
-                const isClosed = infoPopup.classList.contains('closed');
-                // Changer la flèche en fonction de l'état
-                const arrow = infoPopupToggle.querySelector('.info-popup-arrow');
-                if (arrow) {
-                    arrow.style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)';
-                }
-                // Afficher ou cacher le contenu
-                const content = infoPopup.querySelector('.info-popup-content');
-                if (content) {
-                    content.style.display = isClosed ? 'none' : 'block';
-                }
-            });
-        }
     }
 
     async initMap() {
@@ -174,6 +106,7 @@ class FullmapTrack extends HTMLElement {
         this.fullmap = L.map('map').setView([46.2044, 6.1432], 13);
         const layerControl = new L.control.layers(baseMaps).addTo(this.fullmap);
         this.setDefaultLayer();
+        this.initFullmapModalHeader();
     }    
 
     async setDefaultLayer() {
@@ -244,6 +177,7 @@ class FullmapTrack extends HTMLElement {
         // flightAnalyze contient l'objet d'analyse du vol
         // flightData et FlightAnalyze chargés, on peut mettre à jour la carte
         this.updateMap();
+        this.updateHeader();
     }
 
     get flightAnalyze() {
@@ -254,12 +188,7 @@ class FullmapTrack extends HTMLElement {
         if (!this._flightData.V_Track.GeoJSON) return;
 
         this.mapLoadGeoJSON();
-        this.mapDrawGraph();
-        // Mise à jour dynamique du contenu de la popup
-        const infoPopupContent = this.querySelector('#info-popup-content');
-        if (infoPopupContent) {
-            infoPopupContent.innerHTML = this.generateInfoSections();
-        }
+        this.mapDrawGraph(); 
         try {
             // Si la carte Leaflet est dans une modale Bootstrap (ou un élément caché),
             // Leaflet ne connaît pas la taille réelle de la carte au moment de l’appel à fitBounds.
@@ -434,6 +363,13 @@ class FullmapTrack extends HTMLElement {
         }
     }
 
+    updateHeader() {
+        const dropdownMenu = document.getElementById('info-dropdown-menu');
+        if (dropdownMenu) {
+            dropdownMenu.innerHTML = this.generateInfoSections();
+        }
+    }
+
     generateInfoSections() {
         const dateTkoff = new Date(this._feature.properties.coordTimes[0])  // to get local time
         // getMonth returns integer from 0(January) to 11(December)
@@ -590,6 +526,41 @@ class FullmapTrack extends HTMLElement {
             </div>
         `;
     }
+
+    initFullmapModalHeader() {
+        const modalHeader = document.getElementById('fullmap-modal-header');
+        if (modalHeader) {
+            modalHeader.innerHTML = /*html */ `
+                <div class="dropdown" style="margin-left: 30px;">
+                    <button id="info-dropdown-btn" class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Infos
+                    </button>
+                    <div class="dropdown-menu p-3" id="info-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
+                        <!-- Le contenu sera injecté dynamiquement -->
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+            `;
+
+            modalHeader.style.background = "#fff";
+            modalHeader.style.borderBottom = "1px solid #ddd";
+
+            const fsBtn = modalHeader.querySelector('#modal-fullscreen-btn');
+            const modalBody = document.getElementById('fullmap-modal-body');
+            if (fsBtn && modalBody) {
+                fsBtn.addEventListener('click', () => {
+                    if (modalBody.requestFullscreen) {
+                        modalBody.requestFullscreen();
+                    }
+                });
+            }
+        }
+    }    
 
     gettext(key) {
         return this.i18n[key] || key;

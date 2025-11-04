@@ -16,10 +16,9 @@ export class LogMap extends HTMLElement {
 
   connectedCallback() {
     this.render();
-    // Active tous les tooltips Bootstrap sur la page
-    // Initialise tous les tooltips du composant
     this.destroyTooltips();
     this.initTooltips();
+    this.initPopovers(); // <-- Ajoute cette ligne
     this.initMap();
     this.setupEventListeners();
   }
@@ -174,21 +173,11 @@ export class LogMap extends HTMLElement {
             </div>   
             <div class="modal fade" id="fullmapModal" tabindex="-1" aria-labelledby="fullmapModalLabel" aria-hidden="true">
               <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content">
-                    <div class="modal-header d-flex align-items-center justify-content-between">
-                    <h6 class="modal-title" id="fullmapModalLabel">Carte en plein écran</h6>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
-                            <i class="bi bi-arrows-fullscreen"></i>
-                        </button>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                    </div>
-                    </div>
-                  <div class="modal-body" id="fullmap-modal-body">
-                    <!-- Ici tu peux mettre une carte Leaflet, une image, etc. 
-                    <div id="fullmap-leaflet" style="width:100%;height:90vh;"></div>. -->
+                <div class="modal-content">                    
+                    <div class="modal-body" id="fullmap-modal-body">
+                        <div class="modal-header d-flex align-items-center justify-content-between" id="fullmap-modal-header"></div>
                         <fullmap-track></fullmap-track>
-                  </div>
+                    </div>
                 </div>
               </div>
             </div>
@@ -248,8 +237,8 @@ export class LogMap extends HTMLElement {
         const overlay = this.querySelector('#map-overlay-label');
         if (overlay) overlay.textContent = this.flightLabel;
 
-        const modalTitle = document.getElementById('fullmapModalLabel');
-        if (modalTitle) modalTitle.textContent = this.flightLabel;
+        // const modalTitle = document.getElementById('fullmapModalLabel');
+        // if (modalTitle) modalTitle.textContent = this.flightLabel;
 
         this.dbFlight = event.detail.dbFlight;
         if (
@@ -397,27 +386,6 @@ export class LogMap extends HTMLElement {
             // Analyse échouée
             console.warn('Analyse IGC échouée :', analyzeResult ? analyzeResult.message : 'Erreur inconnue');
         }
-        // Fullmap uniquement si trace disponible
-        // Met à jour le titre à l'ouverture
-        const modalTitle = document.getElementById('fullmapModalLabel');
-        if (modalTitle) {
-            // Utilise le dernier flightLabel connu
-            modalTitle.textContent = this.selectedRowData
-            ? this.selectedRowData.Day + ' ' + this.selectedRowData.V_Site + ' ' + this.selectedRowData.Duree + ' ' + this.selectedRowData.V_Engin
-            : '';
-        }
-        const modalBody = document.getElementById('fullmap-modal-body');
-        const fsBtn = document.getElementById('modal-fullscreen-btn');
-        if (fsBtn && modalBody) {
-        fsBtn.addEventListener('click', () => {
-                if (modalBody.requestFullscreen) {
-                    modalBody.requestFullscreen();
-                } else if (modalBody.webkitRequestFullscreen) { // Safari
-                    modalBody.webkitRequestFullscreen();
-                }
-            });
-        }
-
         // Affiche la modale
         const modal = new bootstrap.Modal(document.getElementById('fullmapModal'));
         modal.show();
@@ -477,8 +445,6 @@ export class LogMap extends HTMLElement {
         return {    success: false, message: 'Failed to get elevation data' };
     }   
 
-
-
     showDownloadInProgress() {
         const overlay = this.querySelector('#map-overlay-label');
         if (overlay) {
@@ -513,9 +479,20 @@ export class LogMap extends HTMLElement {
         });
     }
 
+    initPopovers() {
+        const popoverTriggerList = [].slice.call(this.querySelectorAll('[data-bs-toggle="popover"]'));
+        popoverTriggerList.forEach(function (popoverTriggerEl) {
+            new bootstrap.Popover(popoverTriggerEl);
+        });
+    }
+
     setI18n(i18n) {
         this.i18n = i18n;
     }  
+
+    gettext(key) {
+        return this.i18n[key] || key;
+    }   
 }
 
 customElements.define('log-map', LogMap);
