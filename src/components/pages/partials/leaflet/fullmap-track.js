@@ -10,7 +10,10 @@ class FullmapTrack extends HTMLElement {
         this._flightData = null; 
         this._feature = null
         this._flightAnalyze = null;
+        this._layercontrol = null;
         this._geojsonLayer = null;
+        this._thermalLayer = null;
+        this._glideLayer = null;
         this.startMarker = null; 
         this.endMarker = null; 
         this.hoverMarker = null;
@@ -89,6 +92,11 @@ class FullmapTrack extends HTMLElement {
                     color: #a0522d;
                     box-shadow: 0 1px 4px rgba(160,82,45,0.08);
                 }
+                .highlight-row {
+                    background: linear-gradient(90deg, #ffe0b2 0%, #fffde7 100%);
+                    font-weight: bold;
+                    color: #a0522d;
+                }                
             </style>
             <div id="map">
                 <div id="graph-info"></div>
@@ -132,7 +140,6 @@ class FullmapTrack extends HTMLElement {
     async initMap() {
         // Initialiser la carte en la centrant sur Genève
         this.fullmap = L.map('map').setView([46.2044, 6.1432], 13);
-        const layerControl = new L.control.layers(baseMaps).addTo(this.fullmap);
         this.setDefaultLayer();
         this.initFullmapModalHeader();
     }    
@@ -224,6 +231,8 @@ class FullmapTrack extends HTMLElement {
         if (!this._flightData.V_Track.GeoJSON) return;
 
         this.mapLoadGeoJSON();
+        this.mapLoadThermals();
+        this.mapLoadGlides();
         this.mapDrawGraph(); 
         try {
             // Si la carte Leaflet est dans une modale Bootstrap (ou un élément caché),
@@ -234,6 +243,7 @@ class FullmapTrack extends HTMLElement {
         } catch (e) {
             console.log('Error fitting bounds:', e);
         }
+        this.mapUpdateControls();
     }
 
     mapLoadGeoJSON() {
@@ -263,6 +273,59 @@ class FullmapTrack extends HTMLElement {
         // Ajoute la nouvelle couche et garde la référence
         this._geojsonLayer = L.geoJson(this._flightData.V_Track.GeoJSON, { style: trackOptions });
         this._geojsonLayer.addTo(this.fullmap);
+    }
+
+    // onEachFeature: (feature, layer) => this.createPopThermal(feature, layer)
+    // recours à une fonction fléchée pour garder le bon contexte de "this"
+    // sinon la fonction gettext ne fonctionne pas dans le callback onEachFeature
+    mapLoadThermals() {
+        const thermalLayerOption = {
+            style: thermOptions, 
+            pointToLayer: this.thermalIcon,
+            onEachFeature: (feature, layer) => this.createPopThermal(feature, layer) // <-- ici
+        }
+        this._thermalLayer = L.geoJson(this._flightAnalyze.geoThermals, thermalLayerOption)
+        // On ne l'ajoute pas par défaut this._thermalLayer.addTo(this.fullmap);
+    }
+
+    mapLoadGlides() {
+        const glideLayerOption = {
+            style: glideOptions, 
+            pointToLayer: this.glideIcon,
+            onEachFeature: (feature, layer) => this.createPopGlide(feature, layer)
+        }
+        this._glideLayer =  L.geoJson(this._flightAnalyze.geoGlides, glideLayerOption)
+        // On ne l'ajoute pas par défaut geoGlides.addTo(this.fullmap);
+    }
+
+    mapUpdateControls() {
+        const kk7layer = L.tileLayer('https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=logfly.org', {
+            attribution: 'thermal.kk7.ch <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC-BY-NC-SA>/a>',
+            maxNativeZoom: 13,
+            tms: true,
+            opacity: 0.5
+        })
+
+        const kk7Group = new L.LayerGroup()
+        kk7Group.addLayer(kk7layer)
+
+
+        const mAisrpaces = this.gettext('openAIP')
+        const mTrack = this.gettext('Track')
+        const mThermal = this.gettext('Thermals')
+        const mTrans = this.gettext('Transitions')
+        const mScore = this.gettext('Score')
+
+        const displayControl = {
+            //[mAisrpaces] : openaip_layer,
+            [mTrack] : this._geojsonLayer,
+            [mThermal] : this._thermalLayer,
+            [mTrans]: this._glideLayer,
+        }
+
+        this._layercontrol = new L.control.layers(baseMaps, displayControl).addTo(this.fullmap);
+
+        this._layercontrol.addOverlay(kk7Group, "Thermal.kk7.ch");
     }
 
     mapDrawGraph() {
@@ -767,6 +830,92 @@ class FullmapTrack extends HTMLElement {
             }
         }
     }    
+
+    createPopThermal(feature, layer) {
+        let htmlTable = '<table>'                
+        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Altitude gain')+'</td><td>'+feature.properties.alt_gain+'m</td></tr>'
+        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Average climb')+'</td><td>'+feature.properties.avg_climb+'m/s</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Maximum climb')+'</td><td>'+feature.properties.max_climb+'m/s</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Peak climb')+'</td><td>'+feature.properties.peak_climb+'m/s</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Efficiency')+'</td><td>'+feature.properties.efficiency+'%</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Start altitude')+'</td><td>'+feature.properties.start_alt+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Finish altitude')+'</td><td>'+feature.properties.finish_alt+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Start time')+'</td><td>'+feature.properties.start_time+'</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Finish time')+'</td><td>'+feature.properties.finish_time+'</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Duration')+'</td><td>'+feature.properties.duration+'</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude gain')+'</td><td>'+feature.properties.acc_gain+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude loss')+'</td><td>'+feature.properties.acc_loss+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Drift')+'</td><td>'+feature.properties.drift+'</td></tr>'
+        htmlTable += '</table>'       
+        layer.bindPopup(htmlTable)
+        //layer.bindPopup('<h1>'+feature.properties.alt_gain+'</h1><p>name: '+feature.properties.avg_climb+'</p>')
+    
+    }    
+    createPopGlide(feature, layer) {
+        let htmlTable = '<table>'    
+        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Distance')+'</td><td>'+feature.properties.distance+'km</td></tr>' 
+        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Average glide ratio')+'</td><td>'+feature.properties.avg_glide+':1</td></tr>'           
+        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Average speed')+'</td><td>'+feature.properties.avg_speed+'km/h</td></tr>'
+        htmlTable +='<tr><td>'+this.gettext('Altitude change')+'</td><td>'+feature.properties.alt_change+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Average descent')+'</td><td>'+feature.properties.avg_descent+'m/s</td></tr>'                       
+        htmlTable += '<tr><td>'+this.gettext('Start altitude')+'</td><td>'+feature.properties.start_alt+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Finish altitude')+'</td><td>'+feature.properties.finish_alt+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Start time')+'</td><td>'+feature.properties.start_time+'</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Finish time')+'</td><td>'+feature.properties.finish_time+'</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Duration')+'</td><td>'+feature.properties.duration+'</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude gain')+'</td><td>'+feature.properties.acc_gain+'m</td></tr>'
+        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude loss')+'</td><td>'+feature.properties.acc_loss+'m</td></tr>'
+        htmlTable += '</table>'
+        layer.bindPopup(htmlTable)
+    }
+
+    thermalIcon(feature, latlng) {
+        const isBest = feature.properties.best_thermal === true || feature.properties.best_thermal === 1 || feature.properties.best_thermal === 'true';
+        const color = isBest ? 'cyan' : 'blue';
+        const iconName = isBest ? 'bi-hand-thumbs-up' : 'bi-cloud-arrow-up';
+        const customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: ${color};
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            ">
+                <i class="bi ${iconName}" style="font-size: 1.5em; color: white;"></i>
+            </div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+        return L.marker(latlng, { icon: customIcon });
+    }
+
+    glideIcon(feature, latlng) {
+        const isRight = feature.properties.glideToRight === true || feature.properties.glideToRight === 1 || feature.properties.glideToRight === 'true';
+        const color = isRight ? 'purple' : 'orange';
+        const iconName = isRight ? 'bi-arrow-right' : 'bi-arrow-left';
+        const customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: ${color};
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            ">          
+                <i class="bi ${iconName}" style="font-size: 1.2em; color: white;"></i>
+            </div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+        return L.marker(latlng, { icon: customIcon });
+    }
 
     gettext(key) {
         return this._i18n[key] || key;
