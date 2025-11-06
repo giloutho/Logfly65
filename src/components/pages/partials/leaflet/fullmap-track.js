@@ -7,6 +7,7 @@ class FullmapTrack extends HTMLElement {
         super();
         this._i18n = {} // initialisé par le parent
         this.fullmap = null; 
+        this.measureControl = null
         this._flightData = null; 
         this._feature = null
         this._flightAnalyze = null;
@@ -91,12 +92,7 @@ class FullmapTrack extends HTMLElement {
                     font-weight: bold;
                     color: #a0522d;
                     box-shadow: 0 1px 4px rgba(160,82,45,0.08);
-                }
-                .highlight-row {
-                    background: linear-gradient(90deg, #ffe0b2 0%, #fffde7 100%);
-                    font-weight: bold;
-                    color: #a0522d;
-                }                
+                }               
             </style>
             <div id="map">
                 <div id="graph-info"></div>
@@ -112,9 +108,7 @@ class FullmapTrack extends HTMLElement {
             if (segmentLink) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Segment link clicked');
                 const coords = JSON.parse(segmentLink.getAttribute('data-segment'));
-                console.log('Coords for segment:', coords);
                 this.displaySegment(coords);
                 return;
             }
@@ -140,6 +134,11 @@ class FullmapTrack extends HTMLElement {
     async initMap() {
         // Initialiser la carte en la centrant sur Genève
         this.fullmap = L.map('map').setView([46.2044, 6.1432], 13);
+        // Ajoute le contrôle de mesure
+        if (window.measure) {
+            this.measureControl = new window.measure();
+            this.fullmap.addControl(this.measureControl);
+        }
         this.setDefaultLayer();
         this.initFullmapModalHeader();
     }    
@@ -443,6 +442,7 @@ class FullmapTrack extends HTMLElement {
                             fillOpacity: 0.8,
                             weight: 2
                         }).addTo(this.fullmap);
+                        this.fullmap.setZoom(15);
                     }
 
                     this.fullmap.panTo(this.hoverMarker.getLatLng())
@@ -488,6 +488,7 @@ class FullmapTrack extends HTMLElement {
         if (scoreBtn) {
             scoreBtn.textContent = this.gettext('Score');
         }
+
     }
 
     generateInfoSections() {
@@ -807,6 +808,9 @@ class FullmapTrack extends HTMLElement {
                             <!-- Le contenu sera injecté dynamiquement -->
                         </div>
                     </div>
+                    <button id="measure-btn" class="btn btn-secondary btn-sm" type="button">
+                        Mesurer
+                    </button>                    
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
@@ -828,13 +832,35 @@ class FullmapTrack extends HTMLElement {
                     }
                 });
             }
+            const chronoBtn = modalHeader.querySelector('#chrono-dropdown-btn');
+            if (chronoBtn) {
+                chronoBtn.addEventListener('click', () => {
+                    if (this._thermalLayer && !this.fullmap.hasLayer(this._thermalLayer)) {
+                        this._thermalLayer.addTo(this.fullmap);
+                    }
+                    if (this._glideLayer && !this.fullmap.hasLayer(this._glideLayer)) {
+                        this._glideLayer.addTo(this.fullmap);
+                    }
+                });
+            }
+            const measureBtn = modalHeader.querySelector('#measure-btn');
+            if (measureBtn) {
+                measureBtn.addEventListener('click', () => {
+                    // Action à définir pour la mesure
+                    console.log('Mesure activée');
+                    // Par exemple, activer le plugin de mesure Leaflet :
+                    if (this.fullmap && this.measureControl) {
+                        this.measureControl._toggleMeasure();
+                    }
+                });
+            }            
         }
     }    
 
     createPopThermal(feature, layer) {
         let htmlTable = '<table>'                
-        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Altitude gain')+'</td><td>'+feature.properties.alt_gain+'m</td></tr>'
-        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Average climb')+'</td><td>'+feature.properties.avg_climb+'m/s</td></tr>'
+        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Altitude gain')+'</td><td>'+feature.properties.alt_gain+'m</td></tr>'
+        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Average climb')+'</td><td>'+feature.properties.avg_climb+'m/s</td></tr>'
         htmlTable += '<tr><td>'+this.gettext('Maximum climb')+'</td><td>'+feature.properties.max_climb+'m/s</td></tr>'
         htmlTable += '<tr><td>'+this.gettext('Peak climb')+'</td><td>'+feature.properties.peak_climb+'m/s</td></tr>'
         htmlTable += '<tr><td>'+this.gettext('Efficiency')+'</td><td>'+feature.properties.efficiency+'%</td></tr>'
@@ -853,9 +879,9 @@ class FullmapTrack extends HTMLElement {
     }    
     createPopGlide(feature, layer) {
         let htmlTable = '<table>'    
-        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Distance')+'</td><td>'+feature.properties.distance+'km</td></tr>' 
-        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Average glide ratio')+'</td><td>'+feature.properties.avg_glide+':1</td></tr>'           
-        htmlTable += '<tr class="highlight-row"><td>'+this.gettext('Average speed')+'</td><td>'+feature.properties.avg_speed+'km/h</td></tr>'
+        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Distance')+'</td><td>'+feature.properties.distance+'km</td></tr>' 
+        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Average glide ratio')+'</td><td>'+feature.properties.avg_glide+':1</td></tr>'           
+        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Average speed')+'</td><td>'+feature.properties.avg_speed+'km/h</td></tr>'
         htmlTable +='<tr><td>'+this.gettext('Altitude change')+'</td><td>'+feature.properties.alt_change+'m</td></tr>'
         htmlTable += '<tr><td>'+this.gettext('Average descent')+'</td><td>'+feature.properties.avg_descent+'m/s</td></tr>'                       
         htmlTable += '<tr><td>'+this.gettext('Start altitude')+'</td><td>'+feature.properties.start_alt+'m</td></tr>'
