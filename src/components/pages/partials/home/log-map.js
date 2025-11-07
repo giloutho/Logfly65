@@ -377,8 +377,7 @@ export class LogMap extends HTMLElement {
         if (analyzeResult && analyzeResult.success) {
             const elevationData = await this.askElevationData();
             if (elevationData && elevationData.success) {
-                analyzeResult.anaTrack.elevations = elevationData.elevations;
-                console.log('OpenFullMapModal analyzeResult.anaTrack.elevations', analyzeResult.anaTrack.elevations.length, ' alti');
+                analyzeResult.anaTrack.elevations = elevationData.elevations;                
             } else {
                 console.warn('Échec de la récupération des données d\'élévation :', elevationData ? elevationData.message : 'Erreur inconnue');
              }
@@ -392,7 +391,7 @@ export class LogMap extends HTMLElement {
 
         // setTimeout pour laisser le temps à la modale d’être visible avant de mettre à jour la carte
         // leaflet a besoin que le conteneur soit visible pour bien s’initialiser
-        setTimeout(() => {
+        setTimeout(async () => {
             const fullmapTrack = document.querySelector('fullmap-track');
             if (fullmapTrack) {
                 fullmapTrack.i18n = this.i18n;
@@ -407,7 +406,6 @@ export class LogMap extends HTMLElement {
     }
 
     async getIgcAnalyze() {
-        console.log('LogMap - getIgcAnalyze for : ', this.dbFlight.V_Track.fixes.length, ' fixes');
         const params = {
             invoketype: 'igc:analyzing',
             args: {
@@ -435,7 +433,6 @@ export class LogMap extends HTMLElement {
         const resElevation = await window.electronAPI.invoke(params);
         this.restoreOverlayLabel();
         if (resElevation.success) {
-            console.log('Elevation data received : ', resElevation.elevations.length, ' alti');
             return {                
                 success: true,
                 elevations: resElevation.elevations
