@@ -15,10 +15,12 @@ class FullmapTrack extends HTMLElement {
         this._geojsonLayer = null;
         this._thermalLayer = null;
         this._glideLayer = null;
+        this._scoreLayer = null;
         this.startMarker = null; 
         this.endMarker = null; 
         this.hoverMarker = null;
         this.uplot = null;
+        this._scoreMenuState = 'menu'; // 'menu' ou 'result'
     }
 
     connectedCallback() {
@@ -139,7 +141,6 @@ class FullmapTrack extends HTMLElement {
             this.measureControl = new window.measure();
             this.fullmap.addControl(this.measureControl);
         }
-        this.setDefaultLayer();
         this.initFullmapModalHeader();
     }    
 
@@ -150,6 +151,24 @@ class FullmapTrack extends HTMLElement {
                 this.fullmap.removeLayer(layer);
             }
         });
+        if (this._geojsonLayer && this.fullmap.hasLayer(this._geojsonLayer)) {
+            this.fullmap.removeLayer(this._geojsonLayer);
+        }
+        if (this._thermalLayer && this.fullmap.hasLayer(this._thermalLayer)) {
+            this.fullmap.removeLayer(this._thermalLayer);
+        }
+        if (this._glideLayer && this.fullmap.hasLayer(this._glideLayer)) {
+            this.fullmap.removeLayer(this._glideLayer);
+        }     
+        if (this._scoreLayer && this.fullmap.hasLayer(this._scoreLayer)) {
+            console.log('Removed score layer');
+            this.fullmap.removeLayer(this._scoreLayer);
+        }              
+        // Suppression du controleur de couches
+        if (this._layercontrol) {
+            this.fullmap.removeControl(this._layercontrol);
+            this._layercontrol = null;
+        }               
         const defaultMap = await window.electronAPI.storeGet('map');
         switch (defaultMap) {
         case 'open':
@@ -227,6 +246,7 @@ class FullmapTrack extends HTMLElement {
     }
 
     updateMap() {
+        this.setDefaultLayer();
         if (!this._flightData.V_Track.GeoJSON) return;
 
         this.mapLoadGeoJSON();
@@ -488,7 +508,10 @@ class FullmapTrack extends HTMLElement {
         if (scoreBtn) {
             scoreBtn.textContent = this.gettext('Score');
         }
-
+        const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
+        if (scoreDropdownMenu) {
+            scoreDropdownMenu.innerHTML = this.generateScoreMenu();
+        }        
     }
 
     generateInfoSections() {
@@ -731,16 +754,50 @@ class FullmapTrack extends HTMLElement {
         return htmlText;
     }
 
-    /*
-    J'aimerai afficher surépaissir la ligne comme on le fait dans l'affichage de tous les
-    thermiques avec le controleur
-    Dans L6 c'est un peu le bordel. Il afudrait
-        - contrôleur affiche tous les thermiques idem L6
-        - contrôleur affiche toutes les transitions idem L6
-        - clic chrono thermique enlève affichage controleur si présent et n'affiche que le thermique à zoom - 1
-        - clic chrono transition enlève affichage controleur si présent et n'affiche que la transition à zoom - 1
-        - idéalement poserait une overlay avec les infos détaillées 
-    */
+    generateScoreMenu() {
+        // Liste des scores à afficher
+        const scores = [
+            'FFVL',
+            'XContest',
+            'FAI',
+            'FAI-Cylinders',
+            'FAI-OAR',
+            'FAI-OAR2',
+            'XCLeague'
+        ];
+
+        // Génère le HTML du menu avec gestion du clic
+        setTimeout(() => {
+            const menu = document.getElementById('score-dropdown-menu');
+            if (menu) {
+                scores.forEach(league => {
+                    const link = menu.querySelector(`[data-league="${league}"]`);
+                    if (link) {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.runXcScore(league);
+                        });
+                    }
+                });
+            }
+        }, 0);
+
+        return /*html */ `
+            <div style="font-weight:bold; color:#1976d2; font-size:1.15em; padding:8px 16px 4px 16px;">
+                ${this.gettext('Choose a league')}
+            </div>
+            <ul style="list-style:none; margin:0; padding:0;">
+                ${scores.map(score => `
+                    <li style="padding:8px 16px;">
+                        <a href="#" data-league="${score}" style="color:#1976d2; text-decoration:none; font-size:1.1em; display:block;">
+                            ${score}
+                        </a>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    } 
 
     displaySegment(coords) {
         // Si coords est une chaîne, transforme-la en tableau de nombres
@@ -768,8 +825,120 @@ class FullmapTrack extends HTMLElement {
         // Trop serré, on recule d'un niveau de zoom
         const currentZoom = this.fullmap.getZoom();
       //  this.fullmap.setZoom(currentZoom - 1);
-}
+    }
    
+    async runXcScore(selLeague) {
+        // igc-xc-score attends une date au format YYYY-MM-DD
+        // this._flightData?.V_Track?.info.date est au format DD/MM/YYYY
+        const dateStr = this._flightData?.V_Track?.info.date;
+        if (!dateStr) {
+            console.warn('Date de vol non disponible pour le calcul du score XC');
+            return;
+        }
+        const [day, month, year] = dateStr.split('/');
+        const flightDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        console.log('Score :', selLeague,' pour ',this._flightData?.V_Track?.fixes.length,' points  date : ',this._flightData?.V_Track.info.date,'  ',flightDate);
+        const params = {
+            invoketype: 'igc:scoring', 
+            args: {
+                date : flightDate,
+                fixes : this._flightData.V_Track.fixes,
+                league: selLeague
+            }
+        }
+        const resScoring = await window.electronAPI.invoke(params);                        
+        if (resScoring.success) {
+            this.displayScoringResult(this, selLeague, resScoring.geojson);
+        } else {
+            console.warn('Erreur lors du calcul du score XC', resScoring.error);
+        }
+    }
+
+    displayScoringResult(context, league, geojson) {  
+        const leagueColor = this.getLeagueColor(league);
+        let drawingColor = leagueColor.namedColor;
+        let textColor = leagueColor.hexaColor;
+        const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
+        if (scoreDropdownMenu) {
+            scoreDropdownMenu.innerHTML = this.generateScoreTable(league, textColor, geojson);
+            this._scoreMenuState = 'result';
+        }
+        // Supprime l'ancienne couche de score si elle existe
+        if (this._scoreLayer) {
+            this.fullmap.removeLayer(this._scoreLayer);
+        }    
+        // Crée une nouvelle couche GeoJSON pour le score
+        this._scoreLayer = L.geoJson(geojson, {
+            style: function(feature) {
+                return {
+                    stroke: true,
+                    color: drawingColor,
+                    weight: 4,
+                    opacity: 0.7
+                };
+            },
+            onEachFeature: (feature, layer) => {
+                if (feature.properties && feature.properties.popupContent) {
+                    if (feature.geometry && feature.geometry.type === 'Point') {
+                        layer.bindPopup(
+                            `<b>${league} :</b><br> ${feature.properties.popupContent}`
+                        );
+                    } else if (feature.geometry && feature.geometry.type === 'LineString') {
+                        layer.bindTooltip(
+                            `<b>${league} :</b><br> ${feature.properties.popupContent}`,
+                            { permanent: true, direction: 'auto', className: 'score-tooltip' }
+                        );
+                    }
+                }
+        }
+        });
+
+        // Ajoute la couche de score à la carte
+        this._scoreLayer.addTo(this.fullmap);
+        // Ouvre tous les popups des LineString
+        this._scoreLayer.eachLayer(layer => {
+            if (layer.feature && layer.feature.geometry && layer.feature.geometry.type === 'LineString') {
+                layer.openPopup();
+            }
+        });
+        if (this._layercontrol) {
+            this._layercontrol.addOverlay(this._scoreLayer, this.gettext('Score'));
+        }
+        // Ajuste la vue pour inclure la couche de score
+        this.fullmap.fitBounds(this._scoreLayer.getBounds());
+    }
+
+    generateScoreTable(league, currColor, geojson) {
+        const result = JSON.parse(JSON.stringify(geojson))
+        const scoreLegs = result.legs;
+        const legsRows = scoreLegs && scoreLegs.length > 0 ? scoreLegs.map((leg, i) => `
+            <tr>
+                <td style="font-weight:bold;">${leg.name ?? `TP${i+1}`}${leg.next ? ' : ' + leg.next : ''}</td>
+                <td id="sc-legd${i+1}">${leg.d ?? ''} km</td>
+            </tr>
+        `).join('') : '';
+        return /*html */ `
+            <table style="width:100%; border-collapse:collapse; font-size:1.08em;">
+                <tr style="background:${currColor}">
+                    <td style="font-weight:bold;">${this.gettext('League')}</td>
+                    <td id="sc-league">${league ?? ''}</td>
+                </tr>
+                <tr style="background:#eaeaea;">
+                    <td style="font-weight:bold;">${this.gettext('Best possible')}</td>
+                    <td id="sc-best">${result.score ?? ''} pts</td>
+                </tr>
+                <tr>
+                    <td style="font-weight:bold;">${result.course ?? ''}</td>
+                    <td id="sc-course">${result.distance ?? ''} km</td>
+                </tr>
+                <tr style="background:#eaeaea;">
+                    <td style="font-weight:bold;">${this.gettext('Multiplier')}</td>
+                    <td id="sc-multi">${result.multiplier ?? ''}</td>
+                </tr>
+                ${legsRows}
+            </table>
+        `;
+    }       
 
     initFullmapModalHeader() {
         const modalHeader = document.getElementById('fullmap-modal-header');
@@ -853,7 +1022,25 @@ class FullmapTrack extends HTMLElement {
                         this.measureControl._toggleMeasure();
                     }
                 });
+            }
+
+            const scoreBtn = modalHeader.querySelector('#score-dropdown-btn');
+            const scoreDropdownMenu = modalHeader.querySelector('#score-dropdown-menu');
+            this._scoreMenuState = 'menu'; // état initial
+
+            if (scoreBtn && scoreDropdownMenu) {
+                scoreBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (this._scoreMenuState === 'result') {
+                        // On revient au menu initial
+                        scoreDropdownMenu.innerHTML = this.generateScoreMenu();
+                        this._scoreMenuState = 'menu';
+                    }
+                    // Sinon, le comportement par défaut (affichage du menu)
+                    // Rien à faire ici, le menu est déjà affiché
+                });
             }            
+                        
         }
     }    
 
@@ -942,6 +1129,38 @@ class FullmapTrack extends HTMLElement {
         });
         return L.marker(latlng, { icon: customIcon });
     }
+
+    getLeagueColor(selLeague) {
+        let selColor
+        // 33 à la fin pour ajouter de la transparence
+        switch (selLeague) {
+            case 'FFVL':
+                selColor = { namedColor: 'yellow', hexaColor: '#FFFF0033' };
+                break;
+            case 'XContest':
+                selColor = { namedColor: 'fuchsia', hexaColor: '#FF00FF33' };
+                break;
+            case 'FAI':
+                selColor = { namedColor: 'darkorange', hexaColor: '#FF8C0033' };
+                break;  
+            case 'FAI-Cylinders':
+                selColor = { namedColor: 'skyblue', hexaColor: '#87CEEB33' };
+                break;
+            case 'FAI-OAR':
+                selColor = { namedColor: 'yellowgreen', hexaColor: '#9BCD9B33' };
+                break;
+            case 'FAI-OAR2':
+                selColor = { namedColor: 'sienna', hexaColor: '#A0522D33' };
+                break;
+            case 'XCLeague' :
+                selColor = { namedColor: 'lawngreen', hexaColor: '#7CFC0033' };
+                break;
+            default:
+                selColor = { namedColor: 'yellow', hexaColor: '#FFFF0033' };
+                break;
+        }
+        return selColor
+    }    
 
     gettext(key) {
         return this._i18n[key] || key;

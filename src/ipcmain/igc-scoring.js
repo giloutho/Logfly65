@@ -11,7 +11,7 @@ async function scoring(argsScoring) {
             fixes: fixes
         }        
         const rule = scoringRules[league]
-        console.log('[igc-scoring.js] Scoring flight for date :', flight.date, 'with league :', league, 'with ',flight.fixes.length,' fixes')
+       // console.log('[igc-scoring.js] Scoring flight for date :', flight.date, 'with league :', league, 'with ',flight.fixes.length,' fixes')
         // noflight true pour ne pas générer la trace du vol dans le geojson
         const result = solver(flight, rule,{ noflight : true }).next().value;
         if (result.optimal) {
