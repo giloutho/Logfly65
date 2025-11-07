@@ -2,6 +2,7 @@ const {ipcMain} = require('electron');
 const fs = require('node:fs');
 const { IgcDecoding } = require('./igc-decoder.js');
 const { IgcAnalyze } = require('./igc-analyzer');
+const IgcScoring = require('./igc-scoring.js');
 const { getElevationData } = require('./srtm-access');
 
 ipcMain.handle('igc:decoding', async (event, args) => {
@@ -28,6 +29,26 @@ ipcMain.handle('igc:analyzing', async (event, args) => {
         console.log('Error in igc:analyzing handler:', error);
         return { success: false, message: error.message };
     }
+})
+
+ipcMain.handle('igc:scoring', async (event, args) => {
+  /*
+    * args contiendra 
+    * const date = issue de IGCparser 
+    * const fixes = array fixes issu de IGCparser
+    * const league = argsScoring.league
+    */
+    try {
+        const scoringResult = await IgcScoring.scoring(args);
+        if (!scoringResult.success) {
+            console.log('igc:scoring failed : ', scoringResult.message);
+            return { success: false, message: scoringResult.message };
+        }
+        return { success: true, geojson: scoringResult.geojson };
+    } catch (error) {
+        console.log('Error in igc:scoring handler:', error);
+        return { success: false, message: error.message };
+    }   
 })
 
 ipcMain.handle('igc:elevation-data', async (event, args) => {
