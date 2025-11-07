@@ -32,7 +32,6 @@ export class HomePage extends HTMLElement {
 
   setI18n(i18n) {
     this.i18n = i18n;
-    console.log('i18n HomePage -> '+this.i18n['Overview']);
     // Diffuse i18n aux sous-composants déjà présents
     this.querySelectorAll('log-details, log-gliders, log-map, log-sites, log-table').forEach(el => {
       if (typeof el.setI18n === 'function') {

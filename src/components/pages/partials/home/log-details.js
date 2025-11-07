@@ -177,7 +177,7 @@ class LogDetails extends HTMLElement {
             this.dbId = this.rowData.V_ID;
             this.rowIndex = event.detail.rowIndex;    
             const dbFlight = event.detail.dbFlight;
-            console.log(this.rowData.V_Site+' '+this.rowData.V_Engin+' '+this.rowData.Day + ' ' + this.rowData.Hour);
+           // console.log(this.rowData.V_Site+' '+this.rowData.V_Engin+' '+this.rowData.Day + ' ' + this.rowData.Hour);
             this.updateDetails(dbFlight);
         });
 

@@ -6,7 +6,6 @@ let i18n = null;
 
 window.addEventListener("DOMContentLoaded", async () => {
   const startParam = await window.electronAPI.getStartStatus();
-  console.log('Renderer : start status check result : ', startParam);
 
   // Charger le dictionnaire de langue une seule fois
   i18n = await window.electronAPI.langmsg();
@@ -30,7 +29,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 function renderRoute() {
   const hash = window.location.hash.replace('#', '') || 'home';
-  console.log('RenderRoute i18n ', i18n);
   loadRoute(hash, app, i18n);
 }
 

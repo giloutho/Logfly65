@@ -75,7 +75,6 @@ export class LogTable extends HTMLElement {
             };
             const result = await window.electronAPI.invoke(params);
           if (result.success) {
-              console.log(`-> ${result.message}`);  
               this.dbTable();
           } else {
               console.error(`\n-> ${result.message}`);
@@ -200,7 +199,7 @@ export class LogTable extends HTMLElement {
     this.dataTableInstance.on('select', async (e, dt, type, indexes) => {
       if (type === 'row') {
         let countRows = this.dataTableInstance.rows({ selected: true }).count();
-        console.log('Selected rows count: ' + countRows);
+       // console.log('Selected rows count: ' + countRows);
         const rowData = dt.row(indexes).data();
         const rowIndex = indexes;
         const dbFlight = await this.readIgc(rowData.V_ID, rowData.V_Engin);
