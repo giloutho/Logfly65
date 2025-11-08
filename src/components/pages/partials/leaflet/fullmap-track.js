@@ -1,6 +1,6 @@
-import { baseMaps, osmlayer, OpenTopoMap,ignlayer,sat } from '../../../../../js/leaflet-layers.js';
-import {  mtklayer, Esri_WorldTopoMap, outdoorlayer,oaciFrLayer } from '../../../../../js/leaflet-layers.js';
-import {  trackOptions, thermOptions, glideOptions, StartIcon, EndIcon } from '../../../../../js/leaflet-options.js';
+import { generateScoreMenu, generateScoreTable, generateInfoSections } from './fullmap-track-menus.js';
+import { getLeagueColor } from './fullmap-track-utils.js';
+import * as mapUtils from './fullmap-track-map.js';
 
 class FullmapTrack extends HTMLElement {
     constructor() {
@@ -134,76 +134,19 @@ class FullmapTrack extends HTMLElement {
     }
 
     async initMap() {
-        // Initialiser la carte en la centrant sur Genève
-        this.fullmap = L.map('map').setView([46.2044, 6.1432], 13);
-        // Ajoute le contrôle de mesure
-        if (window.measure) {
-            this.measureControl = new window.measure();
-            this.fullmap.addControl(this.measureControl);
-        }
+        await mapUtils.initMap.call(this);
+        // // Initialiser la carte en la centrant sur Genève
+        // this.fullmap = L.map('map').setView([46.2044, 6.1432], 13);
+        // // Ajoute le contrôle de mesure
+        // if (window.measure) {
+        //     this.measureControl = new window.measure();
+        //     this.fullmap.addControl(this.measureControl);
+        // }
         this.initFullmapModalHeader();
     }    
 
     async setDefaultLayer() {
-        // Retirer toutes les couches existantes
-        Object.values(baseMaps).forEach(layer => {
-            if (this.fullmap.hasLayer(layer)) {
-                this.fullmap.removeLayer(layer);
-            }
-        });
-        if (this._geojsonLayer && this.fullmap.hasLayer(this._geojsonLayer)) {
-            this.fullmap.removeLayer(this._geojsonLayer);
-        }
-        if (this._thermalLayer && this.fullmap.hasLayer(this._thermalLayer)) {
-            this.fullmap.removeLayer(this._thermalLayer);
-        }
-        if (this._glideLayer && this.fullmap.hasLayer(this._glideLayer)) {
-            this.fullmap.removeLayer(this._glideLayer);
-        }     
-        if (this._scoreLayer && this.fullmap.hasLayer(this._scoreLayer)) {
-            console.log('Removed score layer');
-            this.fullmap.removeLayer(this._scoreLayer);
-        }              
-        // Suppression du controleur de couches
-        if (this._layercontrol) {
-            this.fullmap.removeControl(this._layercontrol);
-            this._layercontrol = null;
-        }               
-        const defaultMap = await window.electronAPI.storeGet('map');
-        switch (defaultMap) {
-        case 'open':
-            baseMaps.OpenTopo.addTo(this.fullmap);
-            break
-        case 'ign':
-            baseMaps.IGN.addTo(this.fullmap);
-            break
-        case 'sat':
-            baseMaps.Satellite.addTo(this.fullmap);
-            break
-        case 'osm':
-            baseMaps.OSM.addTo(this.fullmap);
-            break
-        case 'mtk':
-            baseMaps.MTK.addTo(this.fullmap);
-            break
-        case 'esri':
-            baseMaps.EsriTopo.addTo(this.fullmap);
-            break
-        case 'out':
-            baseMaps.Outdoor.addTo(this.fullmap);
-            break   
-        default:
-            baseMaps.OSM.addTo(this.fullmap);  
-            break  
-        }            
-        // Ajouter la couche sélectionnée par défaut
-        const selectedLayer = baseMaps[defaultMap];
-        if (selectedLayer) {
-            this.fullmap.addLayer(selectedLayer);
-        } else {
-            // Si la couche n'existe pas, ajouter OpenStreetMap par défaut
-            osmlayer.addTo(this.fullmap);
-        }
+        await mapUtils.setDefaultLayer.call(this);
     }
 
     set flightData(value) {
@@ -265,86 +208,49 @@ class FullmapTrack extends HTMLElement {
         this.mapUpdateControls();
     }
 
-    mapLoadGeoJSON() {
-        // Retire l'ancienne couche si elle existe
-        if (this._geojsonLayer) {
-            this.fullmap.removeLayer(this._geojsonLayer);
-        }
+     mapLoadGeoJSON() {
+        mapUtils.mapLoadGeoJSON.call(this);
+    //     // Retire l'ancienne couche si elle existe
+    //     if (this._geojsonLayer) {
+    //         this.fullmap.removeLayer(this._geojsonLayer);
+    //     }
 
-        try {
-            if (this._feature && this._feature.geometry && this._feature.geometry.type === 'LineString') {
-                const coords = this._feature.geometry.coordinates;
-                if (coords.length > 0) {
-                    // GeoJSON: [longitude, latitude]
-                    const firstLatLng = { lat: coords[0][1], lng: coords[0][0] };
-                    const lastLatLng = { lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] };
-                    if (firstLatLng) {
-                        this.startMarker = L.marker([firstLatLng.lat, firstLatLng.lng], { icon: StartIcon }).addTo(this.fullmap);
-                    }
-                    if (lastLatLng) {
-                        this.endMarker = L.marker([lastLatLng.lat, lastLatLng.lng], { icon: EndIcon }).addTo(this.fullmap);
-                    }                    
-                }
-            }
-        } catch (e) {
-            console.log('Erreur extraction points GeoJSON', e);
-        }
-        // Ajoute la nouvelle couche et garde la référence
-        this._geojsonLayer = L.geoJson(this._flightData.V_Track.GeoJSON, { style: trackOptions });
-        this._geojsonLayer.addTo(this.fullmap);
-    }
+    //     try {
+    //         if (this._feature && this._feature.geometry && this._feature.geometry.type === 'LineString') {
+    //             const coords = this._feature.geometry.coordinates;
+    //             if (coords.length > 0) {
+    //                 // GeoJSON: [longitude, latitude]
+    //                 const firstLatLng = { lat: coords[0][1], lng: coords[0][0] };
+    //                 const lastLatLng = { lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] };
+    //                 if (firstLatLng) {
+    //                     this.startMarker = L.marker([firstLatLng.lat, firstLatLng.lng], { icon: StartIcon }).addTo(this.fullmap);
+    //                 }
+    //                 if (lastLatLng) {
+    //                     this.endMarker = L.marker([lastLatLng.lat, lastLatLng.lng], { icon: EndIcon }).addTo(this.fullmap);
+    //                 }                    
+    //             }
+    //         }
+    //     } catch (e) {
+    //         console.log('Erreur extraction points GeoJSON', e);
+    //     }
+    //     // Ajoute la nouvelle couche et garde la référence
+    //     this._geojsonLayer = L.geoJson(this._flightData.V_Track.GeoJSON, { style: trackOptions });
+    //     this._geojsonLayer.addTo(this.fullmap);
+     }
 
     // onEachFeature: (feature, layer) => this.createPopThermal(feature, layer)
     // recours à une fonction fléchée pour garder le bon contexte de "this"
     // sinon la fonction gettext ne fonctionne pas dans le callback onEachFeature
     mapLoadThermals() {
-        const thermalLayerOption = {
-            style: thermOptions, 
-            pointToLayer: this.thermalIcon,
-            onEachFeature: (feature, layer) => this.createPopThermal(feature, layer) // <-- ici
-        }
-        this._thermalLayer = L.geoJson(this._flightAnalyze.geoThermals, thermalLayerOption)
-        // On ne l'ajoute pas par défaut this._thermalLayer.addTo(this.fullmap);
+        mapUtils.mapLoadThermals.call(this);
     }
 
     mapLoadGlides() {
-        const glideLayerOption = {
-            style: glideOptions, 
-            pointToLayer: this.glideIcon,
-            onEachFeature: (feature, layer) => this.createPopGlide(feature, layer)
-        }
-        this._glideLayer =  L.geoJson(this._flightAnalyze.geoGlides, glideLayerOption)
-        // On ne l'ajoute pas par défaut geoGlides.addTo(this.fullmap);
+        mapUtils.mapLoadGlides.call(this);
     }
 
     mapUpdateControls() {
-        const kk7layer = L.tileLayer('https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=logfly.org', {
-            attribution: 'thermal.kk7.ch <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC-BY-NC-SA>/a>',
-            maxNativeZoom: 13,
-            tms: true,
-            opacity: 0.5
-        })
-
-        const kk7Group = new L.LayerGroup()
-        kk7Group.addLayer(kk7layer)
-
-
-        const mAisrpaces = this.gettext('openAIP')
-        const mTrack = this.gettext('Track')
-        const mThermal = this.gettext('Thermals')
-        const mTrans = this.gettext('Transitions')
-        const mScore = this.gettext('Score')
-
-        const displayControl = {
-            //[mAisrpaces] : openaip_layer,
-            [mTrack] : this._geojsonLayer,
-            [mThermal] : this._thermalLayer,
-            [mTrans]: this._glideLayer,
-        }
-
-        this._layercontrol = new L.control.layers(baseMaps, displayControl).addTo(this.fullmap);
-
-        this._layercontrol.addOverlay(kk7Group, "Thermal.kk7.ch");
+        mapUtils.mapUpdateControls.call(this);
     }
 
     mapDrawGraph() {
@@ -510,7 +416,8 @@ class FullmapTrack extends HTMLElement {
         }
         const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
         if (scoreDropdownMenu) {
-            scoreDropdownMenu.innerHTML = this.generateScoreMenu();
+            //scoreDropdownMenu.innerHTML = this.generateScoreMenu();
+            scoreDropdownMenu.innerHTML = generateScoreMenu(this.gettext.bind(this), this.runXcScore.bind(this));
         }        
     }
 
@@ -754,51 +661,6 @@ class FullmapTrack extends HTMLElement {
         return htmlText;
     }
 
-    generateScoreMenu() {
-        // Liste des scores à afficher
-        const scores = [
-            'FFVL',
-            'XContest',
-            'FAI',
-            'FAI-Cylinders',
-            'FAI-OAR',
-            'FAI-OAR2',
-            'XCLeague'
-        ];
-
-        // Génère le HTML du menu avec gestion du clic
-        setTimeout(() => {
-            const menu = document.getElementById('score-dropdown-menu');
-            if (menu) {
-                scores.forEach(league => {
-                    const link = menu.querySelector(`[data-league="${league}"]`);
-                    if (link) {
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.runXcScore(league);
-                        });
-                    }
-                });
-            }
-        }, 0);
-
-        return /*html */ `
-            <div style="font-weight:bold; color:#1976d2; font-size:1.15em; padding:8px 16px 4px 16px;">
-                ${this.gettext('Choose a league')}
-            </div>
-            <ul style="list-style:none; margin:0; padding:0;">
-                ${scores.map(score => `
-                    <li style="padding:8px 16px;">
-                        <a href="#" data-league="${score}" style="color:#1976d2; text-decoration:none; font-size:1.1em; display:block;">
-                            ${score}
-                        </a>
-                    </li>
-                `).join('')}
-            </ul>
-        `;
-    } 
-
     displaySegment(coords) {
         // Si coords est une chaîne, transforme-la en tableau de nombres
         if (typeof coords === 'string') {
@@ -855,12 +717,13 @@ class FullmapTrack extends HTMLElement {
     }
 
     displayScoringResult(context, league, geojson) {  
-        const leagueColor = this.getLeagueColor(league);
+        const leagueColor = getLeagueColor(league);
         let drawingColor = leagueColor.namedColor;
         let textColor = leagueColor.hexaColor;
         const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
         if (scoreDropdownMenu) {
-            scoreDropdownMenu.innerHTML = this.generateScoreTable(league, textColor, geojson);
+           // scoreDropdownMenu.innerHTML = this.generateScoreTable(league, textColor, geojson);
+            scoreDropdownMenu.innerHTML = generateScoreTable(this.gettext.bind(this), league, textColor, geojson);
             this._scoreMenuState = 'result';
         }
         // Supprime l'ancienne couche de score si elle existe
@@ -907,39 +770,7 @@ class FullmapTrack extends HTMLElement {
         // Ajuste la vue pour inclure la couche de score
         this.fullmap.fitBounds(this._scoreLayer.getBounds());
     }
-
-    generateScoreTable(league, currColor, geojson) {
-        const result = JSON.parse(JSON.stringify(geojson))
-        const scoreLegs = result.legs;
-        const legsRows = scoreLegs && scoreLegs.length > 0 ? scoreLegs.map((leg, i) => `
-            <tr>
-                <td style="font-weight:bold;">${leg.name ?? `TP${i+1}`}${leg.next ? ' : ' + leg.next : ''}</td>
-                <td id="sc-legd${i+1}">${leg.d ?? ''} km</td>
-            </tr>
-        `).join('') : '';
-        return /*html */ `
-            <table style="width:100%; border-collapse:collapse; font-size:1.08em;">
-                <tr style="background:${currColor}">
-                    <td style="font-weight:bold;">${this.gettext('League')}</td>
-                    <td id="sc-league">${league ?? ''}</td>
-                </tr>
-                <tr style="background:#eaeaea;">
-                    <td style="font-weight:bold;">${this.gettext('Best possible')}</td>
-                    <td id="sc-best">${result.score ?? ''} pts</td>
-                </tr>
-                <tr>
-                    <td style="font-weight:bold;">${result.course ?? ''}</td>
-                    <td id="sc-course">${result.distance ?? ''} km</td>
-                </tr>
-                <tr style="background:#eaeaea;">
-                    <td style="font-weight:bold;">${this.gettext('Multiplier')}</td>
-                    <td id="sc-multi">${result.multiplier ?? ''}</td>
-                </tr>
-                ${legsRows}
-            </table>
-        `;
-    }       
-
+     
     initFullmapModalHeader() {
         const modalHeader = document.getElementById('fullmap-modal-header');
         if (modalHeader) {
@@ -1045,7 +876,7 @@ class FullmapTrack extends HTMLElement {
                     e.stopPropagation();
                     if (this._scoreMenuState === 'result') {
                         // On revient au menu initial
-                        scoreDropdownMenu.innerHTML = this.generateScoreMenu();
+                        scoreDropdownMenu.innerHTML = generateScoreMenu(this.gettext.bind(this), this.runXcScore.bind(this));
                         this._scoreMenuState = 'menu';
                     }
                     // Sinon, le comportement par défaut (affichage du menu)
@@ -1054,124 +885,6 @@ class FullmapTrack extends HTMLElement {
             }            
                         
         }
-    }    
-
-    createPopThermal(feature, layer) {
-        let htmlTable = '<table>'                
-        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Altitude gain')+'</td><td>'+feature.properties.alt_gain+'m</td></tr>'
-        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Average climb')+'</td><td>'+feature.properties.avg_climb+'m/s</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Maximum climb')+'</td><td>'+feature.properties.max_climb+'m/s</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Peak climb')+'</td><td>'+feature.properties.peak_climb+'m/s</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Efficiency')+'</td><td>'+feature.properties.efficiency+'%</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Start altitude')+'</td><td>'+feature.properties.start_alt+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Finish altitude')+'</td><td>'+feature.properties.finish_alt+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Start time')+'</td><td>'+feature.properties.start_time+'</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Finish time')+'</td><td>'+feature.properties.finish_time+'</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Duration')+'</td><td>'+feature.properties.duration+'</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude gain')+'</td><td>'+feature.properties.acc_gain+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude loss')+'</td><td>'+feature.properties.acc_loss+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Drift')+'</td><td>'+feature.properties.drift+'</td></tr>'
-        htmlTable += '</table>'       
-        layer.bindPopup(htmlTable)
-        //layer.bindPopup('<h1>'+feature.properties.alt_gain+'</h1><p>name: '+feature.properties.avg_climb+'</p>')
-    
-    }    
-    createPopGlide(feature, layer) {
-        let htmlTable = '<table>'    
-        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Distance')+'</td><td>'+feature.properties.distance+'km</td></tr>' 
-        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Average glide ratio')+'</td><td>'+feature.properties.avg_glide+':1</td></tr>'           
-        htmlTable += '<tr class="efficiency-highlight"><td>'+this.gettext('Average speed')+'</td><td>'+feature.properties.avg_speed+'km/h</td></tr>'
-        htmlTable +='<tr><td>'+this.gettext('Altitude change')+'</td><td>'+feature.properties.alt_change+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Average descent')+'</td><td>'+feature.properties.avg_descent+'m/s</td></tr>'                       
-        htmlTable += '<tr><td>'+this.gettext('Start altitude')+'</td><td>'+feature.properties.start_alt+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Finish altitude')+'</td><td>'+feature.properties.finish_alt+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Start time')+'</td><td>'+feature.properties.start_time+'</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Finish time')+'</td><td>'+feature.properties.finish_time+'</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Duration')+'</td><td>'+feature.properties.duration+'</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude gain')+'</td><td>'+feature.properties.acc_gain+'m</td></tr>'
-        htmlTable += '<tr><td>'+this.gettext('Accumulated altitude loss')+'</td><td>'+feature.properties.acc_loss+'m</td></tr>'
-        htmlTable += '</table>'
-        layer.bindPopup(htmlTable)
-    }
-
-    thermalIcon(feature, latlng) {
-        const isBest = feature.properties.best_thermal === true || feature.properties.best_thermal === 1 || feature.properties.best_thermal === 'true';
-        const color = isBest ? 'cyan' : 'blue';
-        const iconName = isBest ? 'bi-hand-thumbs-up' : 'bi-cloud-arrow-up';
-        const customIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 32px;
-                height: 32px;
-                border-radius: 50%;
-                background: ${color};
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            ">
-                <i class="bi ${iconName}" style="font-size: 1.5em; color: white;"></i>
-            </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
-        });
-        return L.marker(latlng, { icon: customIcon });
-    }
-
-    glideIcon(feature, latlng) {
-        const isRight = feature.properties.glideToRight === true || feature.properties.glideToRight === 1 || feature.properties.glideToRight === 'true';
-        const color = isRight ? 'purple' : 'orange';
-        const iconName = isRight ? 'bi-arrow-right' : 'bi-arrow-left';
-        const customIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 28px;
-                height: 28px;
-                border-radius: 50%;
-                background: ${color};
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            ">          
-                <i class="bi ${iconName}" style="font-size: 1.2em; color: white;"></i>
-            </div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14]
-        });
-        return L.marker(latlng, { icon: customIcon });
-    }
-
-    getLeagueColor(selLeague) {
-        let selColor
-        // 33 à la fin pour ajouter de la transparence
-        switch (selLeague) {
-            case 'FFVL':
-                selColor = { namedColor: 'yellow', hexaColor: '#FFFF0033' };
-                break;
-            case 'XContest':
-                selColor = { namedColor: 'fuchsia', hexaColor: '#FF00FF33' };
-                break;
-            case 'FAI':
-                selColor = { namedColor: 'darkorange', hexaColor: '#FF8C0033' };
-                break;  
-            case 'FAI-Cylinders':
-                selColor = { namedColor: 'skyblue', hexaColor: '#87CEEB33' };
-                break;
-            case 'FAI-OAR':
-                selColor = { namedColor: 'yellowgreen', hexaColor: '#9BCD9B33' };
-                break;
-            case 'FAI-OAR2':
-                selColor = { namedColor: 'sienna', hexaColor: '#A0522D33' };
-                break;
-            case 'XCLeague' :
-                selColor = { namedColor: 'lawngreen', hexaColor: '#7CFC0033' };
-                break;
-            default:
-                selColor = { namedColor: 'yellow', hexaColor: '#FFFF0033' };
-                break;
-        }
-        return selColor
     }    
 
     gettext(key) {
