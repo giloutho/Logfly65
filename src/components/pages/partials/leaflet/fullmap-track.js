@@ -993,11 +993,23 @@ class FullmapTrack extends HTMLElement {
             modalHeader.style.borderBottom = "1px solid #ddd";
 
             const fsBtn = modalHeader.querySelector('#modal-fullscreen-btn');
+            const fsIcon = fsBtn.querySelector('i');
             const modalBody = document.getElementById('fullmap-modal-body');
             if (fsBtn && modalBody) {
                 fsBtn.addEventListener('click', () => {
-                    if (modalBody.requestFullscreen) {
+                    if (!document.fullscreenElement) {
                         modalBody.requestFullscreen();
+                    } else {
+                        document.exitFullscreen();
+                    }
+                });
+                document.addEventListener('fullscreenchange', () => {
+                    if (document.fullscreenElement) {
+                        fsIcon.classList.remove('bi-arrows-fullscreen');
+                        fsIcon.classList.add('bi-fullscreen-exit');
+                    } else {
+                        fsIcon.classList.remove('bi-fullscreen-exit');
+                        fsIcon.classList.add('bi-arrows-fullscreen');
                     }
                 });
             }

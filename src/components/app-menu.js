@@ -187,13 +187,26 @@ export class AppMenu extends HTMLElement {
     });    
 
     // Ajout du comportement toggle plein écran
-    this.querySelector('#fullscreen-toggle').addEventListener('click', async () => {
-     // window.electronAPI.toggleFullscreen();
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
+    const fullscreenBtn = this.querySelector('#fullscreen-toggle');
+    const fullscreenIcon = fullscreenBtn.querySelector('i');
+
+    fullscreenBtn.addEventListener('click', async () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // Met à jour l’icône selon l’état fullscreen
+    document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+            fullscreenIcon.classList.remove('bi-arrows-fullscreen');
+            fullscreenIcon.classList.add('bi-fullscreen-exit');
+        } else {
+            fullscreenIcon.classList.remove('bi-fullscreen-exit');
+            fullscreenIcon.classList.add('bi-arrows-fullscreen');
+        }
     });
 
     // Ajuste dynamiquement le nombre de lignes de log-table en plein écran
