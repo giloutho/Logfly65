@@ -20,6 +20,10 @@
   "dependencies": {
     "@photostructure/tz-lookup": "^11.2.0",
     "@turf/bbox": "^7.2.0",
+    "@turf/boolean-intersects": "^7.2.0",
+    "@turf/center": "^7.2.0",
+    "@turf/helpers": "^7.2.0",
+    "@turf/points-within-polygon": "^7.2.0",
     "array-smooth": "^1.0.0",
     "bootstrap": "^5.3.7",
     "bootstrap-icons": "^1.13.1",
