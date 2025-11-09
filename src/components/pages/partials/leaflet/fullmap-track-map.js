@@ -135,6 +135,7 @@ export function mapUpdateControls() {
     const kk7Group = new L.LayerGroup()
     kk7Group.addLayer(kk7layer)
 
+    this._openaipLayer = new L.layerGroup();
 
     const mAisrpaces = this.gettext('openAIP')
     const mTrack = this.gettext('Track')
@@ -143,7 +144,7 @@ export function mapUpdateControls() {
     const mScore = this.gettext('Score')
 
     const displayControl = {
-        //[mAisrpaces] : openaip_layer,
+        [mAisrpaces] : this._openaipLayer,
         [mTrack] : this._geojsonLayer,
         [mThermal] : this._thermalLayer,
         [mTrans]: this._glideLayer,
@@ -152,6 +153,8 @@ export function mapUpdateControls() {
     this._layercontrol = new L.control.layers(baseMaps, displayControl).addTo(this.fullmap);
 
     this._layercontrol.addOverlay(kk7Group, "Thermal.kk7.ch");
+
+    this._layercontrol.addOverlay(this._openaipLayer, mAisrpaces);
 }
 
 export function displaySegment(coords) {

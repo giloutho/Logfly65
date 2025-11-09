@@ -1,4 +1,4 @@
-import { generateScoreMenu, generateScoreTable, generateInfoSections } from './fullmap-track-menus.js';
+import * as mapMenus from './fullmap-track-menus.js';
 import { getLeagueColor } from './fullmap-track-utils.js';
 import * as mapUtils from './fullmap-track-map.js';
 
@@ -16,6 +16,7 @@ class FullmapTrack extends HTMLElement {
         this._thermalLayer = null;
         this._glideLayer = null;
         this._scoreLayer = null;
+        this._openaipLayer = null;
         this.startMarker = null; 
         this.endMarker = null; 
         this.hoverMarker = null;
@@ -134,15 +135,14 @@ class FullmapTrack extends HTMLElement {
     }
 
     async initMap() {
-        await mapUtils.initMap.call(this);
-        // // Initialiser la carte en la centrant sur Genève
-        // this.fullmap = L.map('map').setView([46.2044, 6.1432], 13);
-        // // Ajoute le contrôle de mesure
-        // if (window.measure) {
-        //     this.measureControl = new window.measure();
-        //     this.fullmap.addControl(this.measureControl);
-        // }
+        await mapUtils.initMap.call(this);        
         this.initFullmapModalHeader();
+        // L'utilisateur demande l'affichage de la couche openAIP
+        this.fullmap.on('overlayadd', (e) => {
+            if (e.layer === this._openaipLayer) {
+                this.onOpenAipLayerActivated();
+            }
+        });
     }    
 
     async setDefaultLayer() {
@@ -210,37 +210,8 @@ class FullmapTrack extends HTMLElement {
 
      mapLoadGeoJSON() {
         mapUtils.mapLoadGeoJSON.call(this);
-    //     // Retire l'ancienne couche si elle existe
-    //     if (this._geojsonLayer) {
-    //         this.fullmap.removeLayer(this._geojsonLayer);
-    //     }
-
-    //     try {
-    //         if (this._feature && this._feature.geometry && this._feature.geometry.type === 'LineString') {
-    //             const coords = this._feature.geometry.coordinates;
-    //             if (coords.length > 0) {
-    //                 // GeoJSON: [longitude, latitude]
-    //                 const firstLatLng = { lat: coords[0][1], lng: coords[0][0] };
-    //                 const lastLatLng = { lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] };
-    //                 if (firstLatLng) {
-    //                     this.startMarker = L.marker([firstLatLng.lat, firstLatLng.lng], { icon: StartIcon }).addTo(this.fullmap);
-    //                 }
-    //                 if (lastLatLng) {
-    //                     this.endMarker = L.marker([lastLatLng.lat, lastLatLng.lng], { icon: EndIcon }).addTo(this.fullmap);
-    //                 }                    
-    //             }
-    //         }
-    //     } catch (e) {
-    //         console.log('Erreur extraction points GeoJSON', e);
-    //     }
-    //     // Ajoute la nouvelle couche et garde la référence
-    //     this._geojsonLayer = L.geoJson(this._flightData.V_Track.GeoJSON, { style: trackOptions });
-    //     this._geojsonLayer.addTo(this.fullmap);
      }
 
-    // onEachFeature: (feature, layer) => this.createPopThermal(feature, layer)
-    // recours à une fonction fléchée pour garder le bon contexte de "this"
-    // sinon la fonction gettext ne fonctionne pas dans le callback onEachFeature
     mapLoadThermals() {
         mapUtils.mapLoadThermals.call(this);
     }
@@ -406,259 +377,69 @@ class FullmapTrack extends HTMLElement {
         if (chronoDropdownMenu) {
             chronoDropdownMenu.innerHTML = this.generateChronoSections();
         }
-        const checkBtn = document.getElementById('check-dropdown-btn');
-        if (checkBtn) {
-            checkBtn.textContent = this.gettext('Check');
+        const airspacesBtn = document.getElementById('airspaces-dropdown-btn');
+        if (airspacesBtn) {
+            airspacesBtn.textContent = this.gettext('Airspaces');
         }
+
         const scoreBtn = document.getElementById('score-dropdown-btn');
         if (scoreBtn) {
             scoreBtn.textContent = this.gettext('Score');
         }
         const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
         if (scoreDropdownMenu) {
-            //scoreDropdownMenu.innerHTML = this.generateScoreMenu();
-            scoreDropdownMenu.innerHTML = generateScoreMenu(this.gettext.bind(this), this.runXcScore.bind(this));
+            scoreDropdownMenu.innerHTML = mapMenus.generateScoreMenu(this.gettext.bind(this), this.runXcScore.bind(this));
+        }   
+        
+        const airspacesDropdownMenu = document.getElementById('airspaces-dropdown-menu');
+        if (airspacesDropdownMenu) {
+            airspacesDropdownMenu.innerHTML = this.generateOpenAipFilter();
+
+            // Ajout des listeners après l'injection du HTML
+            const displayLink = airspacesDropdownMenu.querySelector('#display-link-openaip');
+            if (displayLink) {
+                displayLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.onDisplayOpenAipClicked();
+                });
+            }
+
+            const checkLinkOpenAip = airspacesDropdownMenu.querySelector('#check-link-openaip');
+            if (checkLinkOpenAip) {
+                checkLinkOpenAip.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.onCheckOpenAipClicked();
+                });
+            }
+
+            const checkLinkBazile = airspacesDropdownMenu.querySelector('#check-link-bazile');
+            if (checkLinkBazile) {
+                checkLinkBazile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.onCheckBazileClicked();
+                });
+            }
+
+            const checkLinkFile = airspacesDropdownMenu.querySelector('#aip-check-link-file');
+            if (checkLinkFile) {
+                checkLinkFile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.onCheckFileClicked();
+                });
+            }
         }        
+        
     }
 
     generateInfoSections() {
-        const dateTkoff = new Date(this._feature.properties.coordTimes[0])  // to get local time
-        // getMonth returns integer from 0(January) to 11(December)
-        const dTkOff = String(dateTkoff.getDate()).padStart(2, '0')+'/'+String((dateTkoff.getMonth()+1)).padStart(2, '0')+'/'+dateTkoff.getFullYear()     
-        const hTkoff =  dateTkoff.getUTCHours().toString().padStart(2, '0') + ':' +dateTkoff.getUTCMinutes().toString().padStart(2, '0');
-        const dateLand = new Date(this._feature.properties.coordTimes[this._feature.properties.coordTimes.length - 1])
-        const hLand =  dateLand.getUTCHours().toString().padStart(2, '0') + ':' +dateLand.getUTCMinutes().toString().padStart(2, '0');
-        const durationFormatted = new Date(this._flightData.V_Track.stat.duration*1000).toUTCString().match(/(\d\d:\d\d:\d\d)/)[0]
-        const avgTransSpeed =  (Math.round(this._flightAnalyze?.avgTransSpeed * 100) / 100).toFixed(0)
-        const avgThermalClimb = (Math.round(this._flightAnalyze?.avgThermalClimb * 100) / 100).toFixed(2)
-        const  h = Math.floor(this._flightAnalyze?.extractTime / 3600)
-        const m = Math.floor(this._flightAnalyze?.extractTime % 3600 / 60)
-        const s = Math.floor(this._flightAnalyze?.extractTime % 3600 % 60)
-        const hDisplay = h > 0 ? h + (h == 1 ? "h" : "h") : ""
-        const mDisplay = m > 0 ? m + (m == 1 ? "mn" : "mn") : ""
-        const sDisplay = s > 0 ? s + (s == 1 ? "s" : "s") : ""
-        const hExtractTime = hDisplay + mDisplay + sDisplay    
-
-        const fields = [
-            { id: 'date', label: this.gettext('Date'), value: this._flightData?.V_Track?.info.date },
-            { id: 'site', label: this.gettext('Site'), value: 'PLANFAIT FRANCE' },
-
-            { id: 'pilot', label: this.gettext('Pilot'), value: this._flightData?.V_Track?.info.pilot },
-            { id: 'glider', label: this.gettext('Glider'), value: this._flightData?.V_Track?.info.gliderType },
-
-            { id: 'tkofftime', label: this.gettext('Take off'), value: hTkoff },
-            { id: 'tkoffalt', label: this.gettext('GPS alt'), value: this._flightData?.V_Track?.fixes[0].gpsAltitude+' m '},
-
-            { id: 'landtime', label: this.gettext('Landing'), value: hLand },
-            { id: 'tkoffalt', label: this.gettext('GPS alt'), value: this._flightData?.V_Track?.fixes[this._flightData?.V_Track?.fixes.length - 1].gpsAltitude+' m '},
-            
-            { id: 'duration', label: this.gettext('Duration'), value: durationFormatted },
-            { id: 'size', label: this.gettext('Size'), value: this._flightData.V_Track.stat.distance.toFixed(2)+' km'},
-
-            { id: 'maxalt', label: this.gettext('Max GPS alt'), value: this._flightData?.V_Track?.stat.maxalt.gps+' m'},
-            { id: 'minalt', label: this.gettext('Min GPS alt'), value: this._flightData?.V_Track?.stat.minialt.gps+' m'},
-
-            { id: 'maxclimb', label: this.gettext('Max climb'), value: this._flightData?.V_Track?.stat.maxclimb+' m/s' },
-            { id: 'maxsink', label: this.gettext('Max sink'), value: this._flightData?.V_Track?.stat.maxsink+' m/s' },
-
-            { id: 'maxgain', label: this.gettext('Max gain'), value: this._flightAnalyze.bestGain+' m' },
-            { id: 'maxspeed', label: this.gettext('Max speed'), value: this._flightData?.V_Track?.stat.maxspeed+' km/h' },
-
-            { id: 'bestglide', label: this.gettext('Best transition'), value: (this._flightAnalyze.bestGlide/1000).toFixed(2)+' km' }, 
-            { id: 'empty1', label: '', value: '' },                       
-
-            { id: 'avgtrans', label: this.gettext('Avg transition speed'), value: avgTransSpeed+' km/h' },
-            { id: 'empty2', label: '', value: '' },
-
-            { id: 'avgthermal', label: this.gettext('Avg thermal climb'), value: avgThermalClimb+' m/s' },
-            { id: 'empty3', label: '', value: '' },
-
-            { id: 'extracttime', label: this.gettext('Extraction time'), value: hExtractTime },
-            { id: 'empty4', label: '', value: '' },    
-
-            { id: 'efficiency', label: this.gettext('Avg th efficiency'), value: Math.ceil(this._flightAnalyze?.avgThermalEffi)+' %' },
-            { id: 'empty5', label: '', value: '' },    
-
-        ];
-
-        // Regroupe les champs deux par deux
-        let html = '';
-        for (let i = 0; i < fields.length; i += 2) {
-            const f1 = fields[i];
-            const f2 = fields[i + 1];
-            html += `<div class="info-row" style="display: flex; justify-content: space-between; gap: 12px;">
-                <span>
-                    <b id="label-${f1.id}">${this.gettext(f1.label)}${f1.label ? ' :' : ''}</b>
-                    <span id="value-${f1.id}"${f1.id === 'efficiency' ? ' class="efficiency-highlight"' : ''}>${f1.value ?? ''}</span>
-                </span>
-                ${f2 ? `<span>
-                    <b id="label-${f2.id}">${f2.label ? this.gettext(f2.label) + ' :' : ''}</b>
-                    <span id="value-${f2.id}"${f2.id === 'efficiency' ? ' class="efficiency-highlight"' : ''}>${f2.value ?? ''}</span>
-                </span>` : ''}
-            </div>`;
-        }
-        html += `<div style="margin:12px 0 0 0;">${this.generateMiniBar()}</div>`;
-        return html;
+        return mapMenus.generateInfoSections(this.gettext.bind(this), this._feature, this._flightData, this._flightAnalyze);
     }
-
-    generateMiniBar() {
-        const percThermals = Math.round(this._flightAnalyze?.percThermals * 100) ?? 0;
-        const percGlides   = Math.round(this._flightAnalyze?.percGlides * 100) ?? 0;
-        const percDives    = Math.round(this._flightAnalyze?.percDives * 100) ?? 0;
-        const percVarious  = Math.round(100 - (percThermals + percGlides + percDives));
-
-        // Prépare les segments et légendes
-        const segments = [];
-        const legends = [];
-
-        // Prépare les données
-        const bars = [
-            { value: percThermals, color: '#ffb300', label: this.gettext('Thermal') },
-            { value: percGlides,   color: '#1976d2', label: this.gettext('Glide') },
-            ...(percDives > 0 ? [{ value: percDives, color: '#c62828', label: this.gettext('Dive') }] : []),
-            { value: percVarious,  color: '#43a047', label: this.gettext('Various') }
-        ];
-
-        bars.forEach((bar, i) => {
-            // Détermine l'arrondi
-            let radius = '0';
-            if (i === 0 && bars.length === 1) {
-                radius = '8px';
-            } else if (i === 0) {
-                radius = '8px 0 0 8px';
-            } else if (i === bars.length - 1) {
-                radius = '0 8px 8px 0';
-            }
-            // Affiche la valeur seulement si le segment est assez large (>8%)
-            const showValue = bar.value > 8 ? `${bar.value}%` : '';
-            segments.push(`
-                <div style="
-                    position: relative;
-                    display: inline-block;
-                    height: 36px;
-                    width: ${bar.value}%;
-                    background: ${bar.color};
-                    border-radius: ${radius};
-                    text-align: center;
-                    vertical-align: top;
-                    font-size: 1em;
-                    color: #fff;
-                    font-weight: bold;
-                    overflow: hidden;
-                ">
-                    <span style="
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        white-space: nowrap;
-                        font-size: 1em;
-                        color: #fff;
-                        text-shadow: 0 1px 2px rgba(0,0,0,0.25);
-                    ">${showValue}</span>
-                </div>
-            `);
-            legends.push(`<span style="color:${bar.color};">${bar.label}</span>`);
-        });
-
-        // Génère la barre et la légende
-        const legend = `
-            <div style="display:flex;justify-content:space-between;font-size:0.85em;margin-top:2px;">
-                ${legends.join('')}
-            </div>
-        `;
-
-        return `
-            <div style="margin:8px 0 2px 0;">
-                <div style="width:100%;background:#eee;border-radius:8px;overflow:hidden;display:flex;">
-                    ${segments.join('')}
-                </div>
-                ${legend}
-            </div>
-        `;
-    }
-
+    
+    generateOpenAipFilter() {
+        return mapMenus.generateOpenAipFilter(this.gettext.bind(this));
+    } 
     generateChronoSections() {
-        let htmlText = /*html */ `
-                <div>
-                <table style="width:100%; border-collapse:collapse; font-size:1em;">
-                    <thead>
-                    <tr style="background:#f8f9fa;">
-                        <th style="padding:8px 6px; text-align:left;">${this.gettext('Heure')}</th>
-                        <th style="padding:8px 6px; text-align:left;">${this.gettext('Ecoulé')}</th>
-                        <th style="padding:8px 6px; text-align:left;">${this.gettext('Alt')}</th>
-                        <th style="padding:8px 6px; text-align:left;"></th>
-                        <th style="padding:8px 6px; text-align:left;"></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                `;
-
-        let rowIndex = 0;
-        for (let cr of this._flightAnalyze.course) {
-            const bgColor = rowIndex % 2 === 0 ? '#f2f2f2' : '#fff';
-
-            let icon = '';
-            let label = '';
-            let info = '';
-            let link = '';
-            switch (cr.category) {
-                case 'K':
-                    icon = '<i class="bi bi-send"></i>';
-                    label = this.gettext('Décollage');
-                    info = '';
-                    link = `<a href="#" class="takeoff-link" style="color:#1976d2; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
-                        ${icon} ${label}
-                    </a>`;
-                    break;
-                case 'T':
-                    icon = '<i class="bi bi-cloud-arrow-up"></i>';
-                    label = this.gettext('Thermique');
-                    info = `[+${cr.data1}m ${(Math.round(cr.data2 * 100) / 100).toFixed(2)}m/s]`;
-                    link = `<a href="#" class="segment-link" data-segment='${JSON.stringify(cr.coords)}' style="color:#43a047; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
-                        ${icon} ${label}
-                    </a>`;
-                    break;
-                case 'G':
-                    icon = '<i class="bi bi-arrow-right"></i>';
-                    label = this.gettext('Transition');
-                    info = `[+${cr.data1}km ${cr.data2}km/h]`;
-                    link = `<a href="#" class="segment-link" data-segment='${JSON.stringify(cr.coords)}' style="color:#ff9800; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
-                        ${icon} ${label}
-                    </a>`;
-                    break;
-                case 'L':
-                    icon = '<i class="bi bi-flag"></i>';
-                    label = this.gettext('Atterrissage');
-                    info = '';
-                    link = `<a href="#" class="landing-link" style="color:#1976d2; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
-                        ${icon} ${label}
-                    </a>`;
-                    break;
-                default:
-                    label = '';
-                    info = '';
-                    link = '';
-            }
-
-            htmlText += `
-            <tr style="background:${bgColor};">
-                <td style="padding:6px 4px;">${cr.time}</td>
-                <td style="padding:6px 4px;">${cr.elapsed ?? '00:00'}</td>
-                <td style="padding:6px 4px;">${cr.alt}</td>
-                <td style="padding:6px 4px;">${link}</td>
-                <td style="padding:6px 4px; color:#444;">${info}</td>
-            </tr>
-            `;
-            rowIndex++;
-        }
-
-        htmlText += /*html */ `
-                    </tbody>
-                </table>
-                </div>
-        `;
-        return htmlText;
+        return mapMenus.generateChronoSections(this.gettext.bind(this),this._flightAnalyze);
     }
 
     displaySegment(coords) {
@@ -722,8 +503,7 @@ class FullmapTrack extends HTMLElement {
         let textColor = leagueColor.hexaColor;
         const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
         if (scoreDropdownMenu) {
-           // scoreDropdownMenu.innerHTML = this.generateScoreTable(league, textColor, geojson);
-            scoreDropdownMenu.innerHTML = generateScoreTable(this.gettext.bind(this), league, textColor, geojson);
+            scoreDropdownMenu.innerHTML = mapMenus.generateScoreTable(this.gettext.bind(this), league, textColor, geojson);
             this._scoreMenuState = 'result';
         }
         // Supprime l'ancienne couche de score si elle existe
@@ -793,10 +573,10 @@ class FullmapTrack extends HTMLElement {
                         </div>
                     </div>
                     <div class="dropdown">
-                        <button id="check-dropdown-btn" class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Check
+                        <button id="airspaces-dropdown-btn" class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Airspaces
                         </button>
-                        <div class="dropdown-menu p-3" id="check-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
+                        <div class="dropdown-menu p-3" id="airspaces-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
                             <!-- Le contenu sera injecté dynamiquement -->
                         </div>
                     </div>
@@ -876,7 +656,7 @@ class FullmapTrack extends HTMLElement {
                     e.stopPropagation();
                     if (this._scoreMenuState === 'result') {
                         // On revient au menu initial
-                        scoreDropdownMenu.innerHTML = generateScoreMenu(this.gettext.bind(this), this.runXcScore.bind(this));
+                        scoreDropdownMenu.innerHTML = mapMenusgenerateScoreMenu(this.gettext.bind(this), this.runXcScore.bind(this));
                         this._scoreMenuState = 'menu';
                     }
                     // Sinon, le comportement par défaut (affichage du menu)
@@ -885,7 +665,50 @@ class FullmapTrack extends HTMLElement {
             }            
                         
         }
-    }    
+    }
+
+    async onDisplayOpenAipClicked() {
+        const bloc1Checkboxes = Array.from(document.querySelectorAll('#cbA,#cbB, #cbC, #cbD, #cbE, #cbF, #cbG'))
+        .filter(cb => cb.checked)
+        .map(cb => cb.value)
+        // 'SUA' Special Use Airspace with id 8 is always added
+        bloc1Checkboxes.push('8')
+
+        const bloc2Checkboxes = Array.from(document.querySelectorAll('#cbPro, #cbRes, #cbDan, #cbCtr, #cbTma, #cbRmz, #cbTmz, #cbGli, #cbOth'))
+        .filter(cb => cb.checked)
+        .map(cb => cb.value)
+
+        const checkedRadios = Array.from(document.querySelectorAll('input[type="radio"]:checked'))
+        const radioValues = checkedRadios.map(rd => rd.value)
+
+        const values = {
+            classes : bloc1Checkboxes,
+            types : bloc2Checkboxes,
+            floor : radioValues[0],
+            radius : radioValues[1]*1000
+        }
+        const params = {
+            invoketype: 'openaip:download',
+            args: {
+                values: values,
+                feature : this._feature
+            }
+        }
+        const response = await window.electronAPI.invoke(params);                        
+        if (response.success) {
+            console.log(response.airspaces)
+        }
+    }
+
+    onOpenAipLayerActivated() {
+        // L'utilisateur demande l'affichage de la couche openAIP
+        if (this._openaipLayer && !this.fullmap.hasLayer(this._openaipLayer)) {
+           // this._openaipLayer.addTo(this.fullmap);
+           alert('Affichage de la couche openAIP non encore implémentée.');
+        } else {
+            alert('La couche openAIP n’est pas disponible.');
+        }
+    }
 
     gettext(key) {
         return this._i18n[key] || key;
