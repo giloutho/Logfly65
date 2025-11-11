@@ -77,3 +77,39 @@ export function getLeagueColor(selLeague) {
     }
     return selColor
 }    
+
+export function styleAip(feature) {
+  return{      
+    fillColor: feature.properties.Color,
+    fillOpacity: 0.4,
+    weight: 1,
+    opacity: 1,
+    color: 'white'
+  }
+}
+
+export function findPolygonsAtClick(openaipGroup, latlng, map) {
+    const booleanPointInPolygon = turf.booleanPointInPolygon;
+    const point = { type: 'Feature', geometry: { type: 'Point', coordinates: [latlng.lng, latlng.lat] } };
+    let html = '';
+    openaipGroup.eachLayer(layer => {
+        if (layer instanceof L.GeoJSON) {
+            layer.eachLayer(subLayer => {
+                if (subLayer.feature && subLayer.feature.geometry.type === 'Polygon') {
+                    if (booleanPointInPolygon(point, subLayer.feature)) {
+                        // Icônes Bootstrap : bi bi-cloud, bi bi-info-circle, bi bi-arrow-down, bi bi-arrow-up
+                        html += `<i class="bi bi-airplane-fill"></i>&nbsp;${subLayer.feature.properties.Class}&nbsp;&nbsp;[${subLayer.feature.properties.type}]&nbsp;&nbsp;`;
+                        html += `${subLayer.feature.properties.Name}<br/>`;
+                        html += `<i class="bi bi-arrow-down-circle-fill"></i>&nbsp;${subLayer.feature.properties.FloorLabel} (${subLayer.feature.properties.Floor}m )&nbsp;&nbsp;&nbsp;`;
+                        html += `<i class="bi bi-arrow-up-circle-fill"></i>&nbsp;${subLayer.feature.properties.CeilingLabel} (${subLayer.feature.properties.Ceiling}m )<br/><br/>`;
+                    }
+                }
+            });
+        }
+    });
+    if (html !== '') {
+        map.openPopup(html, latlng, {
+            offset: L.point(0, -24)
+        });
+    }
+}

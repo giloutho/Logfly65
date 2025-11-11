@@ -1,5 +1,5 @@
 import * as mapMenus from './fullmap-track-menus.js';
-import { getLeagueColor } from './fullmap-track-utils.js';
+import { getLeagueColor, styleAip, findPolygonsAtClick } from './fullmap-track-utils.js';
 import * as mapUtils from './fullmap-track-map.js';
 
 class FullmapTrack extends HTMLElement {
@@ -16,7 +16,7 @@ class FullmapTrack extends HTMLElement {
         this._thermalLayer = null;
         this._glideLayer = null;
         this._scoreLayer = null;
-        this._openaipLayer = null;
+        this._openaipGroup = null;
         this.startMarker = null; 
         this.endMarker = null; 
         this.hoverMarker = null;
@@ -137,12 +137,6 @@ class FullmapTrack extends HTMLElement {
     async initMap() {
         await mapUtils.initMap.call(this);        
         this.initFullmapModalHeader();
-        // L'utilisateur demande l'affichage de la couche openAIP
-        this.fullmap.on('overlayadd', (e) => {
-            if (e.layer === this._openaipLayer) {
-                this.onOpenAipLayerActivated();
-            }
-        });
     }    
 
     async setDefaultLayer() {
@@ -206,6 +200,11 @@ class FullmapTrack extends HTMLElement {
             console.log('Error fitting bounds:', e);
         }
         this.mapUpdateControls();
+                // Ajoute ici le listener de clic sur la carte
+        this.fullmap.on('click', (e) => {
+            console.log('clic sur la carte')
+            const foundPolygons = findPolygonsAtClick(this._openaipGroup, e.latlng,this.fullmap);
+        });
     }
 
      mapLoadGeoJSON() {
@@ -688,26 +687,38 @@ class FullmapTrack extends HTMLElement {
             radius : radioValues[1]*1000
         }
         const params = {
-            invoketype: 'openaip:download',
+            invoketype: 'openaip:display',
             args: {
                 values: values,
-                feature : this._feature
+                feature : this._feature,
+                filter : true
             }
         }
         const response = await window.electronAPI.invoke(params);                        
         if (response.success) {
-            console.log(response.airspaces)
+            console.log(response.geojson.length+' airspaces loaded from openAIP');
+            this.displayOpenAipLayer(response.geojson)
+        } else {
+            console.log('Error loading openAIP airspaces', response.message);
         }
     }
 
-    onOpenAipLayerActivated() {
-        // L'utilisateur demande l'affichage de la couche openAIP
-        if (this._openaipLayer && !this.fullmap.hasLayer(this._openaipLayer)) {
-           // this._openaipLayer.addTo(this.fullmap);
-           alert('Affichage de la couche openAIP non encore implémentée.');
-        } else {
-            alert('La couche openAIP n’est pas disponible.');
+    displayOpenAipLayer(totalGeoJson) {
+        console.log('displayOpenAipLayer', totalGeoJson.length)
+        if (this._openaipGroup) {
+            this.fullmap.removeLayer(this._openaipGroup);
+            if (this._layercontrol) {
+                this._layercontrol.removeLayer(this._openaipGroup);
+            }
         }
+        this._openaipGroup = new L.LayerGroup()
+        for (let index = 0; index < totalGeoJson.length; index++) {
+            const element = totalGeoJson[index]
+            console.log(element.properties.Name+' '+element.properties.Class+' '+element.properties.Floor)
+            let airSpace = new L.geoJson(element,{ style: styleAip})
+            this._openaipGroup.addLayer(airSpace)
+        }  
+        this._openaipGroup.addTo(this.fullmap)
     }
 
     gettext(key) {
