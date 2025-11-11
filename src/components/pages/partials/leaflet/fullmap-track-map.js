@@ -30,9 +30,12 @@ export async function setDefaultLayer() {
         this.fullmap.removeLayer(this._glideLayer);
     }     
     if (this._scoreLayer && this.fullmap.hasLayer(this._scoreLayer)) {
-        console.log('Removed score layer');
         this.fullmap.removeLayer(this._scoreLayer);
-    }              
+    }    
+    if (this._openaipGroup) {
+        this.fullmap.removeLayer(this._openaipGroup);
+        this._openaipGroup = null;
+    }
     // Suppression du controleur de couches
     if (this._layercontrol) {
         this.fullmap.removeControl(this._layercontrol);
@@ -137,14 +140,12 @@ export function mapUpdateControls() {
 
     this._openaipLayer = new L.layerGroup();
 
-    const mAisrpaces = this.gettext('openAIP')
     const mTrack = this.gettext('Track')
     const mThermal = this.gettext('Thermals')
     const mTrans = this.gettext('Transitions')
     const mScore = this.gettext('Score')
 
     const displayControl = {
-        [mAisrpaces] : this._openaipLayer,
         [mTrack] : this._geojsonLayer,
         [mThermal] : this._thermalLayer,
         [mTrans]: this._glideLayer,
@@ -154,7 +155,6 @@ export function mapUpdateControls() {
 
     this._layercontrol.addOverlay(kk7Group, "Thermal.kk7.ch");
 
-    this._layercontrol.addOverlay(this._openaipLayer, mAisrpaces);
 }
 
 export function displaySegment(coords) {
@@ -184,3 +184,21 @@ export function displaySegment(coords) {
     const currentZoom = this.fullmap.getZoom();
     //  this.fullmap.setZoom(currentZoom - 1);
 }
+
+const StartIcon = new L.Icon({
+    iconUrl: './static/images/windsock22.png',
+    shadowUrl: './static/images/marker-shadow.png',
+    iconSize: [22, 22],
+    iconAnchor: [0, 22],
+    popupAnchor: [1, -34],
+    shadowSize: [25, 25]
+})     
+
+const EndIcon = new L.Icon({
+    iconUrl: './static/images/arrivee22.png',
+    shadowUrl: './static/images/marker-shadow.png',
+    iconSize: [18, 18],
+    iconAnchor: [4, 18],
+    popupAnchor: [1, -34],
+    shadowSize: [25, 25]
+})          

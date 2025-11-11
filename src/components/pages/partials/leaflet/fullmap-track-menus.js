@@ -358,8 +358,8 @@ export function generateChronoSections(gettext, flightAnalyze) {
         <table style="width:100%; border-collapse:collapse; font-size:1em;">
             <thead>
                 <tr style="background:#f8f9fa;">
-                    <th style="padding:8px 6px; text-align:left;">${gettext('Heure')}</th>
-                    <th style="padding:8px 6px; text-align:left;">${gettext('Ecoulé')}</th>
+                    <th style="padding:8px 6px; text-align:left;">${gettext('Time')}</th>
+                    <th style="padding:8px 6px; text-align:left;">${gettext('Elapsed')}</th>
                     <th style="padding:8px 6px; text-align:left;">${gettext('Alt')}</th>
                     <th style="padding:8px 6px; text-align:left;"></th>
                     <th style="padding:8px 6px; text-align:left;"></th>
@@ -379,7 +379,7 @@ export function generateChronoSections(gettext, flightAnalyze) {
         switch (cr.category) {
             case 'K':
                 icon = '<i class="bi bi-send"></i>';
-                label = gettext('Décollage');
+                label = gettext('Take off');
                 info = '';
                 link = `<a href="#" class="takeoff-link" style="color:#1976d2; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
                     ${icon} ${label}
@@ -387,7 +387,7 @@ export function generateChronoSections(gettext, flightAnalyze) {
                 break;
             case 'T':
                 icon = '<i class="bi bi-cloud-arrow-up"></i>';
-                label = gettext('Thermique');
+                label = gettext('Thermal');
                 info = `[+${cr.data1}m ${(Math.round(cr.data2 * 100) / 100).toFixed(2)}m/s]`;
                 link = `<a href="#" class="segment-link" data-segment='${JSON.stringify(cr.coords)}' style="color:#43a047; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
                     ${icon} ${label}
@@ -403,7 +403,7 @@ export function generateChronoSections(gettext, flightAnalyze) {
                 break;
             case 'L':
                 icon = '<i class="bi bi-flag"></i>';
-                label = gettext('Atterrissage');
+                label = gettext('Landing');
                 info = '';
                 link = `<a href="#" class="landing-link" style="color:#1976d2; font-weight:bold; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
                     ${icon} ${label}
@@ -471,7 +471,7 @@ export function generateOpenAipFilter(gettext) {
             </div>
         </div>
         <div style="margin-bottom:10px;">
-            <div style="font-weight:bold; margin-bottom:6px;">${gettext('Limite plancher')}</div>
+            <div style="font-weight:bold; margin-bottom:6px;">${gettext('Floor below')}</div>
             <div style="display:flex; gap:18px; flex-wrap:wrap;">
                 <label><input type="radio" name="floorBelow" id="frd5" value="500" checked> 500m</label>
                 <label><input type="radio" name="floorBelow" id="frd10" value="1000"> 1000m</label>
@@ -482,7 +482,7 @@ export function generateOpenAipFilter(gettext) {
             </div>
         </div>
         <div style="margin-bottom:18px;">
-            <div style="font-weight:bold; margin-bottom:6px;">${gettext('Rayon')}</div>
+            <div style="font-weight:bold; margin-bottom:6px;">${gettext('Radius')}</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <label><input type="radio" name="bloc4radio" id="rd5" value="50" checked> 50km</label>
                 <label><input type="radio" name="bloc4radio" id="rd10" value="100"> 100km</label>

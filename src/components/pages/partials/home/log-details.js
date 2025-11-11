@@ -245,7 +245,7 @@ class LogDetails extends HTMLElement {
         const commentInput = this.querySelector('#comment-input');
         if (commentInput) {
           // Met à jour le placeholder dynamiquement
-          commentInput.placeholder = this.gettext('Enter or edit the comment, then confirm...');
+          commentInput.placeholder = this.gettext('Enter or edit the comment, then confirm')+'...';
         }
         if (this.rowData.V_Commentaire && this.rowData.V_Commentaire.trim() !== '') {
           if (commentInput) {

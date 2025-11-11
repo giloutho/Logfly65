@@ -161,7 +161,7 @@ async function copyDbFile(oldDbPath, newDbPath) {
                 return { success: false, globalError: 'copyDbFile : Migration confirmation cancelled by user' };
             }
             const fileName = path.basename(newDbPath);
-            const confirmMsg = gettext('Confirm copy of logbook :'+fileName)
+            const confirmMsg = gettext('Confirm copy of logbook'+' : '+fileName)
             const buttonMsg = gettext('Select')+' '+fileName+' '+gettext('and confirm')
             const fileConfirm = await dialog.showOpenDialog({
                 title: confirmMsg,

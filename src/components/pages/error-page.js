@@ -125,11 +125,11 @@ class ErrorPage extends HTMLElement {
             // Impossible d'ajouter V_Tag V_Tag_Exists == false envoyer msgTag
             // globalError != '' envoyer globalError
             if (result.msgTables && result.msgTables !== '') {
-                alert(this.gettext('Database issue: ') + result.msgTables + ' (' + this.gettext('Table count: ') + result.tableCount + ')');
+                alert(this.gettext('Database issue')+' : ' + result.msgTables + ' (' + this.gettext('Table count: ') + result.tableCount + ')');
             } else if (result.V_Tag_Exists === false) {
-                alert(this.gettext('Database issue: ') + result.msgTag);
+                alert(this.gettext('Database issue')+' : ' + result.msgTag);
             } else if (result.globalError && result.globalError !== '') {
-                alert(this.gettext('Database issue: ') + result.globalError);
+                alert(this.gettext('Database issue')+' : ' + result.globalError);
             }
         }
     }
