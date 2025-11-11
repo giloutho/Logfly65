@@ -12,9 +12,7 @@ ipcMain.handle('openaip:display', async (event, args) => {
     const feature = args.feature;
     const result = await downloadAirspaces(filterValues, feature)
     if (result.success) {   
-        console.log('downloaded ',result.airspaces.length,' airspaces from openAIP')
         const processed = await processDecoding(result.airspaces,filter,filterValues)
-        console.log('return success ',processed.success, ' length ',processed.geojson.length)
         return processed
     } else {
         return result
@@ -22,7 +20,6 @@ ipcMain.handle('openaip:display', async (event, args) => {
 })
 
 async function downloadAirspaces(filterValues, feature) {
-    console.log('downloadAirspaces request ',filterValues)
     const openAipKey = configkey.access.openaip;
     let openAip_Url
     const airspaces = []
@@ -43,7 +40,6 @@ async function downloadAirspaces(filterValues, feature) {
         const distance = filterValues.radius
         const icaoFilter = filterValues.classes     // [0,1,2,3,4]   // F = 5   G = 6
         openAip_Url = `https://api.core.openaip.net/api/airspaces?page=${page}&limit=1000&pos=${center}&dist=${distance}&icaoClass=${icaoFilter}&apiKey=${openAipKey}`
-        console.log(openAip_Url)
     }
     try {
         while (page <= totalPages) {
@@ -383,7 +379,6 @@ function processItem(item) {
 
 function filterAip(item,arrTypes) {
   let keptItem
-    console.log('filterAip : '+item.name+' '+item.icaoClass+' '+item.typeRef)
   switch (item.icaoClass) {
         case 'A' :
           keptItem = true
@@ -413,8 +408,8 @@ function filterAip(item,arrTypes) {
                 break 
             case 3 :  // Prohibited
                 arrTypes.includes(item.typeRef.toString()) ? keptItem = true : keptItem = false
-                arrTypes.forEach(x => console.log('arrTypes '+x));
-                console.log('Prohibited : '+item.name+' keptItem : '+keptItem)
+                //arrTypes.forEach(x => console.log('arrTypes '+x));
+                //console.log('Prohibited : '+item.name+' keptItem : '+keptItem)
                 break   
             case 4 :  // CTR
                 arrTypes.includes(item.typeRef.toString()) ? keptItem = true : keptItem = false
