@@ -34,3 +34,9 @@ export function createPopGlide(feature, layer, gettext) {
     htmlTable += '</table>'
     layer.bindPopup(htmlTable)
 }
+
+export function airSpPopup(feature, layer) {
+  if (feature.properties) {
+      layer.bindPopup('<b>Class : '+feature.properties.Class+'</b><BR/>'+feature.properties.Name+'<BR/>Floor : '+feature.properties.Floor+'<BR/>Ceiling : '+feature.properties.Ceiling+'<BR/>'+feature.properties.Comment)
+  }
+}

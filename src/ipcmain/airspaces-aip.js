@@ -19,6 +19,34 @@ ipcMain.handle('openaip:display', async (event, args) => {
     }
 })
 
+ipcMain.handle('openaip:check', async (event, args) => {
+    const filter = true // always set to true
+    const filterValues = args.values
+    const feature = args.feature;
+    const track = args.track
+    const ground = args.ground
+    const result = await downloadAirspaces(filterValues, feature)
+    if (result.success) {   
+        console.log('downloadAirspaces for checking ',result.airspaces.length)
+        const processed = await processDecoding(result.airspaces,filter,filterValues)
+        if (processed.success) {
+            console.log('processDecoding for checking ',processed.geojson.length)
+            if (processed.geojson.length > 0) {
+                console.log('track '+track.fixes.length+' points, ground '+ground.length+' points')
+                const checkResult = await checkTrack(track, processed.geojson, ground)
+                console.log('checkResult ',checkResult.insidePoints.length)
+                return checkResult
+            } else {
+                return { success : true, airGeoJson : [], insidePoints : [] }
+            }
+        } else {
+            return processed
+        }
+    } else {
+        return result
+    }
+})
+
 async function downloadAirspaces(filterValues, feature) {
     const openAipKey = configkey.access.openaip;
     let openAip_Url
@@ -121,6 +149,63 @@ async function processDecoding(openAipArray,filter,filterValues) {
         return { success: true, geojson: totalGeoJson };
     } catch (e) {
         return { success: false, message: 'Error during airspaces decoding: ' + e.message };
+    }
+}
+
+/*
+* track         : correspond à la trace décodée provenant de flightData.V_Track
+* aipGeojson    : geoJSON des espaces aériens obtenus après décodage
+* ground        : tableau des altitudes au sol correspondant aux points de la trace
+*/
+async function checkTrack(track, aipGeojson, ground) {
+    try {
+        let checkResult = {
+            airGeoJson : [],
+            insidePoints : []
+        }       
+        // In order to use turfWithin below, the fixes array must be converted in a "turf multipoint object"
+        let trackPoints = track.fixes.map(point => [point.longitude,point.latitude] )
+        let altMaxPoint = track.stat.maxalt.gps
+        let multiPt = turfHelper.multiPoint(trackPoints)
+        let geoTrack = track.GeoJSON
+        let turfNb = 0
+        let nbInside = 0
+        for (let index = 0; index < aipGeojson.length; index++) {
+            console.log('boucle de vérification sur aipGeojson')
+            const element = aipGeojson[index]            
+            if (turfIntersect(element,geoTrack)) {
+                let pushGeoJson = false
+                let ptsWithin = turfWithin(multiPt, element)                    
+                for (let i = 0; i < ptsWithin.features.length; i++) {
+                    const feature = ptsWithin.features[i]
+                    for (let j = 0; j < feature.geometry.coordinates.length; j++) {
+                        turfNb ++               
+                        const vPoint = feature.geometry.coordinates[j]
+                        idxPoint = trackPoints.findIndex(e => e === vPoint)
+                        let floorLimit = element.properties.Floor
+                        let ceilingLimit = element.properties.Ceiling             
+                        if (element.properties.AltLimit_Bottom_AGL === true) floorLimit += ground[idxPoint]
+                        if (element.properties.AltLimit_Top_AGL ===  true) ceilingLimit +=  ground[idxPoint]
+                        if (track.fixes[idxPoint].gpsAltitude > floorLimit && track.fixes[idxPoint].gpsAltitude < ceilingLimit) {
+                            nbInside++
+                            if (!pushGeoJson) {
+                                checkResult.airGeoJson.push(element)
+                                pushGeoJson = true
+                            }          
+                            checkResult.insidePoints.push(idxPoint)
+                        }              
+                    }
+                }
+            } 
+        } 
+        if (checkResult.insidePoints.length == 0) {
+            for (let index = 0; index < aipGeojson.length; index++) {
+                checkResult.airGeoJson.push(aipGeojson[index])   
+            }
+        }
+        return { success: true, ...checkResult }
+    } catch (e) {
+        return { success: false, message: 'Error during airspaces check: ' + e.message }
     }
 }
 

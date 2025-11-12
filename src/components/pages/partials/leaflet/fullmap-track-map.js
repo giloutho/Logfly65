@@ -36,11 +36,17 @@ export async function setDefaultLayer() {
         this.fullmap.removeLayer(this._openaipGroup);
         this._openaipGroup = null;
     }
+    if (this._checkGroup) {
+        this.fullmap.removeLayer(this._checkGroup);
+        this._checkGroup = null;
+    }    
+
     // Suppression du controleur de couches
     if (this._layercontrol) {
         this.fullmap.removeControl(this._layercontrol);
         this._layercontrol = null;
     }               
+    
     const defaultMap = await window.electronAPI.storeGet('map');
     switch (defaultMap) {
     case 'open':

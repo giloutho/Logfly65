@@ -1,6 +1,7 @@
 import * as mapMenus from './fullmap-track-menus.js';
-import { getLeagueColor, styleAip, findPolygonsAtClick } from './fullmap-track-utils.js';
-import * as mapUtils from './fullmap-track-map.js';
+import * as mapUtils from './fullmap-track-utils.js';
+import * as mapBasics from './fullmap-track-map.js';
+import { airSpPopup } from './fullmap-track-popups.js';
 
 class FullmapTrack extends HTMLElement {
     constructor() {
@@ -17,6 +18,7 @@ class FullmapTrack extends HTMLElement {
         this._glideLayer = null;
         this._scoreLayer = null;
         this._openaipGroup = null;
+        this._checkGroup = null;
         this.startMarker = null; 
         this.endMarker = null; 
         this.hoverMarker = null;
@@ -135,25 +137,17 @@ class FullmapTrack extends HTMLElement {
     }
 
     async initMap() {
-        await mapUtils.initMap.call(this);        
+        await mapBasics.initMap.call(this);        
         this.initFullmapModalHeader();
     }    
 
     async setDefaultLayer() {
-        await mapUtils.setDefaultLayer.call(this);
+        await mapBasics.setDefaultLayer.call(this);
     }
 
     set flightData(value) {
         this._flightData = value;
         this._feature = this._flightData.V_Track.GeoJSON.features[0];
-        // flightData contient l'objet complet provenant de igc-decoder
-        // {V_Track: {…}, V_Track est le résultat d'igcDecoding
-        // V_LatDeco: 45.85326666666667, 
-        // V_LongDeco: 6.222916666666666, 
-        // V_AltDeco: 956, 
-        // V_Site: 'PLANFAIT'}        
-        // Ici tu peux déclencher un rendu ou une mise à jour de la carte
-       // this.updateMap();
     }
 
     get flightData() {
@@ -202,25 +196,23 @@ class FullmapTrack extends HTMLElement {
         this.mapUpdateControls();
                 // Ajoute ici le listener de clic sur la carte
         this.fullmap.on('click', (e) => {
-            console.log('clic sur la carte')
-            const foundPolygons = findPolygonsAtClick(this._openaipGroup, e.latlng,this.fullmap);
+            const foundPolygons = mapUtils.findPolygonsAtClick(this._openaipGroup, e.latlng,this.fullmap);
         });
     }
-
      mapLoadGeoJSON() {
-        mapUtils.mapLoadGeoJSON.call(this);
+        mapBasics.mapLoadGeoJSON.call(this);
      }
 
     mapLoadThermals() {
-        mapUtils.mapLoadThermals.call(this);
+        mapBasics.mapLoadThermals.call(this);
     }
 
     mapLoadGlides() {
-        mapUtils.mapLoadGlides.call(this);
+        mapBasics.mapLoadGlides.call(this);
     }
 
     mapUpdateControls() {
-        mapUtils.mapUpdateControls.call(this);
+        mapBasics.mapUpdateControls.call(this);
     }
 
     mapDrawGraph() {
@@ -497,7 +489,7 @@ class FullmapTrack extends HTMLElement {
     }
 
     displayScoringResult(context, league, geojson) {  
-        const leagueColor = getLeagueColor(league);
+        const leagueColor = mapUtils.getLeagueColor(league);
         let drawingColor = leagueColor.namedColor;
         let textColor = leagueColor.hexaColor;
         const scoreDropdownMenu = document.getElementById('score-dropdown-menu');
@@ -589,7 +581,10 @@ class FullmapTrack extends HTMLElement {
                     </div>
                     <button id="measure-btn" class="btn btn-secondary btn-sm" type="button">
                         Mesurer
-                    </button>                    
+                    </button>  
+                    <span id="airsp-spinner" class="spinner-border spinner-border-sm text-danger ms-3" role="status" style="display:none;">
+                        <span class="visually-hidden">Loading...</span>
+                    </span>                  
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
@@ -704,7 +699,6 @@ class FullmapTrack extends HTMLElement {
     }
 
     displayOpenAipLayer(totalGeoJson) {
-        console.log('displayOpenAipLayer', totalGeoJson.length)
         if (this._openaipGroup) {
             this.fullmap.removeLayer(this._openaipGroup);
             if (this._layercontrol) {
@@ -714,12 +708,151 @@ class FullmapTrack extends HTMLElement {
         this._openaipGroup = new L.LayerGroup()
         for (let index = 0; index < totalGeoJson.length; index++) {
             const element = totalGeoJson[index]
-            console.log(element.properties.Name+' '+element.properties.Class+' '+element.properties.Floor)
-            let airSpace = new L.geoJson(element,{ style: styleAip})
+            let airSpace = new L.geoJson(element,{ style: mapUtils.styleAip})
             this._openaipGroup.addLayer(airSpace)
         }  
         this._openaipGroup.addTo(this.fullmap)
+        // Ajoute OpenAIP au contrôleur de couches
+        if (this._layercontrol) {
+            this._layercontrol.addOverlay(this._openaipGroup, this.gettext('OpenAIP'));
+        }        
     }
+
+    async onCheckOpenAipClicked() {
+        const spinner = document.getElementById('airsp-spinner');
+        if (spinner) spinner.style.display = 'inline-block';
+        const defaultFilter = {
+            classes : [0,1,2,3,8],
+            types : ['3','1','2'],
+            floor : this._flightData?.V_Track?.stat.maxalt.gps,
+            radius :0
+        }        
+        const params = {    
+            invoketype: 'openaip:check',        
+            args: {
+                values: defaultFilter,
+                feature : this._feature,
+                track :  this._flightData.V_Track,
+                ground : this._flightAnalyze.elevations
+            }
+        }
+        const checkResult = await window.electronAPI.invoke(params);  
+        if (spinner) spinner.style.display = 'none';                
+        if (checkResult.success) {
+            console.log('OpenAIP incursions found:', checkResult.insidePoints.length); 
+            this.displayAirCheck(checkResult);         
+        } else {
+            console.log('Error checking openAIP airspaces', checkResult.message);
+        }   
+    }
+
+    displayAirCheck(checkResult) {
+        if (this._checkGroup) {
+            this.fullmap.removeLayer(this._checkGroup);
+            if (this._layercontrol) {
+                this._layercontrol.removeLayer(this._checkGroup);
+            }
+        }        
+        let nbBadPoints = 0
+        let cr = '<br>'
+        let report = ''
+        if (checkResult.insidePoints.length > 0 &&  checkResult.airGeoJson.length > 0) {
+            this._checkGroup = new L.FeatureGroup()
+            report += '<p><span style="background-color: #F6BB42; color: white;">&nbsp;&nbsp;&nbsp;'
+            report += this.gettext('Airspaces involved')+'&nbsp;&nbsp;&nbsp;&nbsp;</span><br>'
+            // airspaces GeoJson added to the map 
+            for (let index = 0; index < checkResult.airGeoJson.length; index++) {
+                const element = checkResult.airGeoJson[index]
+                report += element.properties.Name+cr
+                const airSpace = L.geoJson(element,{ style: mapUtils.styleAip, onEachFeature: airSpPopup })
+                this._checkGroup.addLayer(airSpace)
+            }
+            report += '</p>'
+            // Bad points GeoJson
+            let badGeoJson = { 
+                "type": "Feature", 
+                "properties": {
+                    "name": "Airspace checking",
+                    "desc": ""
+                },
+                "geometry": 
+                    { "type": "MultiPoint", 
+                    "coordinates": []
+                    } 
+            }
+            let badCoord = []
+            for (let index = 0; index < checkResult.insidePoints.length; index++) {
+                nbBadPoints++
+                const idxBad = checkResult.insidePoints[index]
+                badCoord.push([this._flightData.V_Track.fixes[idxBad].longitude,this._flightData.V_Track.fixes[idxBad].latitude])
+            }
+
+            // fin du report
+            report += '<p><span style="background-color: #DA4453; color: white;"> &nbsp;&nbsp;&nbsp;'
+            report += this.gettext('violation(s)')+' : '+nbBadPoints+' '+this.gettext('points')+'&nbsp;&nbsp;&nbsp;&nbsp;</span></p>'
+            report += '<i>'+this.gettext('Click on an airspace to display the description')+'</i>'            
+
+            let badStyle = {
+                'color': "#FFFF00",
+                'weight': 2,
+                'opacity': 1
+            }  
+            let geojsonMarkerOptions = {
+                radius: 3,
+                fillColor: "#ff7800",
+                color: "#000",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            }
+            badGeoJson.geometry.coordinates = badCoord
+            
+            const badLayerPoints =  L.geoJson(badGeoJson,{
+                style : badStyle,
+                pointToLayer: function(f, latlng) {return L.circleMarker(latlng,geojsonMarkerOptions)},
+                onEachFeature: function(feature, layer) {layer.bindPopup(report)}.bind(this) // pour accéder à this.gettext si besoin                
+            })
+            this._checkGroup.addTo(this.fullmap)
+            this._checkGroup.addLayer(badLayerPoints)
+            this._layercontrol.addOverlay( this._checkGroup, this.gettext('Checking'))
+            let center
+            if (this._checkGroup && typeof this._checkGroup.getBounds === 'function') {
+                const bounds = this._checkGroup.getBounds();
+                if (bounds.isValid()) {
+                    this.fullmap.fitBounds(bounds);
+                    center = bounds.getCenter();
+                }            
+                const layers = this._checkGroup.getLayers();
+                // le premier layer est un airspace concerné pas un point de violation
+                const lastLayer = layers[layers.length - 1];        
+                if (lastLayer && typeof lastLayer.openPopup === 'function') {
+                lastLayer.eachLayer(subLayer => {
+                        if (typeof subLayer.openPopup === 'function') {
+                            subLayer.openPopup();
+                            return false; // stop après le premier
+                        }
+                    });
+                }
+            }            
+        } else {
+            report += '<span style="font-size:16px;background-color: #009900; color: white;">&nbsp;&nbsp;&nbsp;'
+            report += this.gettext('No violations in the selected airspace file')
+            report += '&nbsp;&nbsp;&nbsp;</span>'
+            this._checkGroup = new L.FeatureGroup()
+            // checked airspaces GeoJson added to the map 
+            for (let index = 0; index < checkResult.airGeoJson.length; index++) {
+                console.log('Displaying checked airspace ', index)
+                const element = checkResult.airGeoJson[index]
+                const airSpace = L.geoJson(element,{ style: mapUtils.styleAirsp, onEachFeature: airSpPopup })
+                this._checkGroup.addLayer(airSpace)
+                this._checkGroup.addTo(this.fullmap)
+                this._layercontrol.addOverlay( this._checkGroup, this.gettext('Checking'))
+                this.fullmap.fitBounds(this._checkGroup.getBounds())                
+            }
+            this.fullmap.openPopup(report, this.fullmap.getCenter(), { maxWidth: 400 });
+        }
+    } 
+    
 
     gettext(key) {
         return this._i18n[key] || key;

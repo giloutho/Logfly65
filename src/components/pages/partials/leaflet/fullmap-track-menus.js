@@ -442,6 +442,7 @@ export function generateOpenAipFilter(gettext) {
             <a href="#" id="display-link-openaip" style="color:#1976d2; text-decoration:underline;">
                 <i class="bi bi-eye" style="margin-right:6px;"></i>
                 ${gettext('Afficher les espaces aériens')} [openAIP]
+                <i class="bi bi-eye" style="margin-left:6px;"></i>
             </a>
         </div>
         <div style="margin-bottom:10px;">

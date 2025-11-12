@@ -113,3 +113,40 @@ export function findPolygonsAtClick(openaipGroup, latlng, map) {
         });
     }
 }
+
+export function styleAirsp(feature){
+  return{      
+      fillColor: getColorAirsp(feature.properties.Cat),
+      weight: 1,
+      opacity: 1,
+      color: 'white',
+      fillOpacity: 0.4
+  }
+}
+
+function getColorAirsp(a){
+  return  a>22 ? '#999999':   
+          a>21 ? '#999999':
+          a>20 ? '#FFCC00':
+          a>19 ? '#5B900A':
+          a>18 ? '#00FF00':
+          a>17 ? '#66CCFF':
+          a>16 ? '#FF9999':            
+          a>15 ? '#FF00FF':
+          a>14 ? '#000000':
+          a>13 ? '#9999CC':
+          a>12 ? '#99FFFF':
+          a>11 ? '#FFFF00':
+          a>10 ? '#19BFBF':   
+          a>9 ? '#7FBC58':
+          a>8 ? '#A47A11':
+          a>7 ? '#900A68':
+          a>6 ? '#4B0A90':
+          a>5 ? '#FFCCCC':
+          a>4 ? '#FF0000':            
+          a>3 ? '#0000FF':
+          a>2 ? '#1971BF':
+          a>1 ? '#FFCCCC':
+          a>0 ? '#FE9A2E':                                                 
+          '#9999CC' 
+}
