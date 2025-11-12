@@ -64,7 +64,7 @@ export class AppMenu extends HTMLElement {
           </a>
           <ul class="navbar-nav center-icons mb-2 mb-lg-0">
             <li class="nav-item">
-              <a class="nav-link" href="#home" title="Carnet de vol">
+              <a class="nav-link" href="#home" title="Logbook">
                 <img src="./static/icons/mnu-logbook.png" 
                   alt="Logbook" 
                   data-bs-toggle="tooltip"
@@ -74,8 +74,12 @@ export class AppMenu extends HTMLElement {
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#overview" title="Vue d'ensemble">
-                <img src="./static/icons/mnu-overview1.png" alt="Overview" />
+              <a class="nav-link" href="#overview" title="Overview">
+                <img src="./static/icons/mnu-overview1.png"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="bottom"
+                  title=${this.gettext('Overview')}
+                />
               </a>
             </li>
             <li class="nav-item">
@@ -88,62 +92,96 @@ export class AppMenu extends HTMLElement {
                 />
               </a>
             </li>
-
+            <li class="nav-item">
+                <a class="nav-link" href="#external" title=${this.gettext('External track')}>
+                    <img src="./static/icons/mnu-external.png"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="bottom"
+                      title=${this.gettext('External track')}
+                  />
+                </a>
+            </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#external" title="Trace externe">
-                        <img src="./static/icons/mnu-external.png" alt="Trace externe" height="32">
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#statistics" title="Statistiques">
-                        <img src="./static/icons/mnu-stat.png" alt="Statistiques" height="32">
+                    <a class="nav-link" href="#statistics" title="Statistics">
+                        <img src="./static/icons/mnu-stat.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Statistics')}
+                      />
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#site" title="Sites">
-                        <img src="./static/icons/mnu-site.png" alt="Sites" height="32">
+                        <img src="./static/icons/mnu-site.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Sites')}
+                      />
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#airspaces" title="Espaces aériens">
-                        <img src="./static/icons/mnu-airspaces.png" alt="Espaces aériens" height="32">
+                    <a class="nav-link" href="#airspaces" title="Airspaces">
+                        <img src="./static/icons/mnu-airspaces.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Airspaces')}  
+                        />                      
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#waypoint" title="Waypoints">
-                        <img src="./static/icons/mnu-waypoint.png" alt="Waypoints" height="32">
+                        <img src="./static/icons/mnu-waypoint.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Waypoints')} 
+                        />                      
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#equipment" title="Équipement">
-                        <img src="./static/icons/mnu-equipment.png" alt="Équipement" height="32">
+                    <a class="nav-link" href="#equipment" title="Equipment">
+                        <img src="./static/icons/mnu-equipment.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Equipment')}   
+                        />                       
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#xcnav" title="XC Nav">
-                        <img src="./static/icons/mnu-xcnav.png" alt="XC Nav" height="32">
+                        <img src="./static/icons/mnu-xcnav.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('XCNav')}    
+                        />                    
                     </a>
                 </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#settings" title="Réglages">
-                <img src="./static/icons/mnu-settings.png" 
-                  alt="Réglages" 
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="bottom"
-                  title= ${this.gettext('Settings')}  
-                />
-              </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#support" title="Support">
-                    <img src="./static/icons/mnu-support.png" alt="Support" height="32">
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#utilities" title="Utilitaires">
-                    <img src="./static/icons/mnu-utilities.png" alt="Utilitaires" height="32">
-                </a> 
-            </li>           
+                <li class="nav-item">
+                  <a class="nav-link" href="#settings" title="Settings">
+                    <img src="./static/icons/mnu-settings.png" 
+                      alt="Réglages" 
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="bottom"
+                      title= ${this.gettext('Settings')}  
+                    />
+                  </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#support" title="Support">
+                        <img src="./static/icons/mnu-support.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Support')}                        
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#utilities" title="Utilitaires">
+                        <img src="./static/icons/mnu-utilities.png"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="bottom"
+                          title=${this.gettext('Utilities')}   
+                        />                     
+                    </a> 
+                </li>           
           </ul>          
           <button id="fullscreen-toggle" class="btn btn-outline-light ms-auto" title="Plein écran">
             <i class="bi bi-arrows-fullscreen"></i>
@@ -242,7 +280,12 @@ export class AppMenu extends HTMLElement {
   }
 
   gettext(key) {
-    return this.i18n[key] || key;
+    let value = this.i18n[key] || key;
+    // Remplace tous les espaces (code 32) par &nbsp;
+    // Si gettext renvoie la string "External track", 
+    // dans le tooltip,l'expression apparaitra tronçonnée à "External" 
+    // il faut donc mettre  "External&nbsp;track"
+    return value.split('').map(char => char.charCodeAt(0) === 32 ? '&nbsp;' : char).join('');
   }  
 
 }
