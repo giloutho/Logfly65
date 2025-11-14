@@ -503,10 +503,10 @@ export function generateOpenAipFilter(gettext) {
             <a href="#" id="check-link-openaip" style="color:#1976d2; text-decoration:underline;">
                 ${gettext('OpenAip source')}
             </a>
-            <a href="#" id="-check-link-bazile" style="color:#1976d2; text-decoration:underline;">
+            <a href="#" id="check-link-bazile" style="color:#1976d2; text-decoration:underline;">
                 ${gettext('Bazile source (fr)')}
             </a>
-            <a href="#" id="aip-check-link-file" style="color:#1976d2; text-decoration:underline;">
+            <a href="#" id="check-link-file" style="color:#1976d2; text-decoration:underline;">
                 ${gettext('Local file source')}
             </a>
         </div>

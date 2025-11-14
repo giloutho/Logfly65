@@ -115,6 +115,7 @@ export function findPolygonsAtClick(openaipGroup, latlng, map) {
 }
 
 export function styleAirsp(feature){
+    console.log(feature.properties.Name,' feature category:', feature.properties.Cat);
   return{      
       fillColor: getColorAirsp(feature.properties.Cat),
       weight: 1,

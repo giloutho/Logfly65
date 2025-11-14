@@ -3,6 +3,8 @@ const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { dialog } = require('electron');
+const https = require('https');
+const http = require('http');
 
 
 /* 
@@ -47,4 +49,40 @@ ipcMain.handle('file:readtext', async (event, args) => {
         return { success: false, message: 'File not found or empty' };
     }
     return { success: true, data: result };
+});
+
+ipcMain.handle('file:download', async (event, args) => {
+    const { dlUrl } = args;
+    const url = dlUrl;
+    const fileName = path.basename(url);
+    const destPath = path.join(app.getPath('userData'), fileName);
+    if (fs.existsSync(destPath)) {
+        try {
+            fs.unlinkSync(destPath);
+        } catch (err) {
+            console.error('Erreur lors de la suppression du fichier existant :', err);
+        }
+    }
+
+    // Choix du module selon le protocole
+    const client = url.startsWith('https') ? https : http;
+
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(destPath);
+        client.get(url, response => {
+            if (response.statusCode !== 200) {
+                resolve({ success: false, message: `Download failed: ${response.statusCode}` });
+                return;
+            }
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    resolve({ success: true, path: destPath });
+                });
+            });
+        }).on('error', err => {
+            fs.unlink(destPath, () => {});
+            resolve({ success: false, message: err.message });
+        });
+    });
 });
