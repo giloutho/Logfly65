@@ -25,6 +25,7 @@ class FullmapTrack extends HTMLElement {
         this.uplot = null;
         this._scoreMenuState = 'menu'; // 'menu' ou 'result'
         this._winSpinner = null;
+        this.cutAction = false;
     }
 
     connectedCallback() {
@@ -42,47 +43,30 @@ class FullmapTrack extends HTMLElement {
                 }
                 #map {
                     width: 100%;
-                    height: 100%;
+                    height: calc(100% - 180px); /* 150px pour le graph + 30px pour graph-info */
                     min-height: 0;
                     position: relative;
-                    /* Optionnel : effet de transparence général */
-                    /* background: rgba(255,255,255,0.2); */
                 }
                 #graph-info {
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                    bottom: 150px; /* doit correspondre à la hauteur de #graph */
-                    z-index: 2000;
+                    width: 100%;
                     background: rgba(255, 255, 255, 0.92);
-                    font-size: 1.08em;
+                    font-size: 0.75em;
                     font-weight: 500;
                     color: #333;
                     border-radius: 8px 8px 0 0;
                     border-bottom: 1px solid #bbb;
                     padding: 8px 18px;
-                    margin: 0 20px;
+                    margin: 0 0 0 0;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                    pointer-events: none;
                     letter-spacing: 0.02em;
                     text-align: center;
                     transition: background 0.2s;
                 }
                 #graph {
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    z-index: 2000;
-                    height: 150px; /* adapte selon besoin */
-                    min-height: 80px;
-                    max-height: 250px;
-                    background: rgba(255,255,255,0.7);
-                    margin: 0;
-                    padding: 0;
-                    overflow: hidden;
-                    border-top: 1px solid #ddd;
-                    pointer-events: auto;
+                    background: #fff !important;
+                }
+                #graph-canvas {
+                    background: #fff !important;
                 }
                 .u-legend { display: none !important; }    
                 .info-section {
@@ -98,12 +82,18 @@ class FullmapTrack extends HTMLElement {
                     font-weight: bold;
                     color: #a0522d;
                     box-shadow: 0 1px 4px rgba(160,82,45,0.08);
-                }               
+                }   
+                .hover-alt-tooltip {
+                    background: #fff !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    color: #333 !important; /* ou la couleur de ton choix */
+                    font-size: 0.70em;                   
+                }           
             </style>
-            <div id="map">
-                <div id="graph-info"></div>
-                <div id="graph"></div>
-            </div>
+            <div id="map"></div>
+            <div id="graph-info"></div>
+            <div id="graph"></div>
         `;
     }
 
@@ -135,6 +125,26 @@ class FullmapTrack extends HTMLElement {
                 return;
             }
         });
+
+        document.addEventListener('fullscreenchange', () => {
+            const graphDiv = this.querySelector('#graph');
+            if (graphDiv) {
+                // Ajuste la largeur du graphique à la largeur du conteneur
+                graphDiv.style.width = '100%';
+                // Il faut redessiner le graphe qui utilise la largeur disponible au moment de l’appel
+                // Si le DOM n’a pas encore recalculé la taille réelle (après le passage en plein écran), 
+                // offsetWidth peut rester à l’ancienne valeur.
+                // On ajoute un petit délai avant de redessiner le graphe.
+                if (this.uplot) {
+                    // Détruit l'ancien graphique
+                    console.log('Fullscreen changed uplot redraw');
+                    this.uplot.destroy();
+                    // Redessine le graphique avec la nouvelle largeur
+                    setTimeout(() => { this.mapDrawGraph(); }, 50); // 50 ms suffit 
+                }
+            }
+        });
+        
     }
 
     async initMap() {
@@ -197,7 +207,9 @@ class FullmapTrack extends HTMLElement {
         this.mapUpdateControls();
                 // Ajoute ici le listener de clic sur la carte
         this.fullmap.on('click', (e) => {
-            const foundPolygons = mapUtils.findPolygonsAtClick(this._openaipGroup, e.latlng,this.fullmap);
+            if ( this._openaipGroup && this.fullmap.hasLayer(this._openaipGroup)) {
+                const foundPolygons = mapUtils.findPolygonsAtClick(this._openaipGroup, e.latlng, this.fullmap);
+            }
         });
     }
      mapLoadGeoJSON() {
@@ -221,64 +233,85 @@ class FullmapTrack extends HTMLElement {
         const arraySol = this._flightAnalyze && this._flightAnalyze.elevations
             ? this._flightAnalyze.elevations
             : [];
-        // times contained in the GeoJSon are only strings
-        // conversion to date object is necessary for Highcharts.dateFormat to work on the x axis
         const arrayHour = this._feature['properties']['coordTimes'].map(hour => new Date(hour));
-        const x = arrayHour.map(date => date.getTime());
+        const labels = arrayHour.map(date =>
+            date.getUTCHours().toString().padStart(2, '0') + ':' + date.getUTCMinutes().toString().padStart(2, '0')
+        );
         const y1 = arrayAlti;
-        // Si arraySol n'est pas de la bonne taille, on le remplit avec null ou undefined
         let y2 = [];
         if (arraySol.length === arrayAlti.length) {
             y2 = arraySol;
         } else if (arraySol.length > 0) {
-            // Adapter la taille si besoin (optionnel)
             y2 = arrayAlti.map((_, i) => arraySol[i] ?? null);
         }
 
         const graphDiv = this.querySelector('#graph');
         if (graphDiv) {
-            graphDiv.innerHTML = "";
-            const options = {
-                width: graphDiv.offsetWidth || 600,
-                height: 150,
-                series: [
-                    {},
-                    { label: "Altitude", stroke: "blue", width: 2 },
-                    { 
-                        label: "Altitude sol",
-                        stroke: "Sienna",
-                        width: 2,
-                        fill: "rgba(160, 82, 45, 0.18)" // Remplissage sous la courbe
-                    }
-                ],
-                axes: [
-                    {
-                        values: (u, ticks) => ticks.map(ts => {
-                            const d = new Date(ts);
-                            //return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                            return d.getUTCHours().toString().padStart(2, '0') + ':' +d.getUTCMinutes().toString().padStart(2, '0');
-                        }),
-                      //  label: "Heure"
-                    },
-                    { label: "Altitude (m)" }
-                ]
-            };
-            const data = [x, y1, y2.length ? y2 : new Array(y1.length).fill(null)];
-            this.uplot = new uPlot(options, data, graphDiv);
+            // Remplace le contenu par un canvas
+            graphDiv.innerHTML = '<canvas id="graph-canvas"></canvas>';
+            const ctx = graphDiv.querySelector('#graph-canvas').getContext('2d');
 
-            const graphInfoDiv = this.querySelector('#graph-info');
-            if (graphInfoDiv) {
-                graphInfoDiv.textContent = ''; // vide au départ
+            // Détruit l'ancien graphique Chart.js si présent
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
             }
+            // Crée le graphique Chart.js
+            this.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "",
+                            data: y1,
+                            borderColor: "blue",
+                            backgroundColor: "rgba(0,0,255,0.08)",
+                            fill: false,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: "",
+                            data: y2,
+                            borderColor: "Sienna",
+                            backgroundColor: "rgba(160,82,45,0.18)",
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }, // supprime la légende
+                        tooltip: { enabled: false } // supprime la bulle d'info au survol
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: `${this.gettext("Time")}` }
+                        },
+                        y: {
+                            title: { display: true, text: `${this.gettext("Altitude")} (m)` }
+                        }
+                    }
+                },
+            });
 
             // Affichage dynamique de l'info au survol
-            this.uplot.root.addEventListener('mousemove', e => {
-                const idx = this.uplot.cursor.idx;
-                if (idx != null && idx >= 0 && idx < x.length) {
+            const graphInfoDiv = this.querySelector('#graph-info');
+            if (graphInfoDiv) {
+                graphInfoDiv.textContent = '';
+            }
+            // Ajoute un événement au survol du graphique
+            graphDiv.querySelector('#graph-canvas').addEventListener('mousemove', (e) => {
+                const points = this.chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
+                if (points.length > 0) {
+                    const idx = points[0].index;
                     const heure = arrayHour[idx];
                     const alt = y1[idx];
                     const sol = y2[idx];
-                   // console.log(this._flightData.V_Track.vz[idx].toFixed(2)+'m/s  '+this._flightData.V_Track.speed[idx].toFixed(0)+' km/h')
                     graphInfoDiv.innerHTML =
                         `<span style="color:#1a6dcc;font-weight:bold;">🕒 ${heure.getUTCHours().toString().padStart(2, '0')}:${heure.getUTCMinutes().toString().padStart(2, '0')}</span>
                         &nbsp;|&nbsp;
@@ -289,16 +322,14 @@ class FullmapTrack extends HTMLElement {
                         <span style="color:#388e3c;">⬇️ ${this._flightData.V_Track.vz[idx].toFixed(2)} m/s</span>
                         &nbsp;|&nbsp;
                         <span style="color:#e65100;">➡️ ${this._flightData.V_Track.speed[idx].toFixed(0)} km/h</span>`;
-                    // Récupère la position correspondante dans le GeoJSON
+                    // Ajoute le marker sur la carte comme avant si besoin
                     const coords = this._feature.geometry.coordinates;
                     const coord = coords[idx];
                     if (coord) {
-                        const latlng = [coord[1], coord[0]]; // [lat, lng]
-                        // Supprime l'ancien marker de survol s'il existe
+                        const latlng = [coord[1], coord[0]];
                         if (this.hoverMarker) {
                             this.fullmap.removeLayer(this.hoverMarker);
                         }
-                        // Ajoute un nouveau marker (ou déplace l'existant)
                         this.hoverMarker = L.circleMarker(latlng, {
                             radius: 7,
                             color: 'orange',
@@ -306,46 +337,42 @@ class FullmapTrack extends HTMLElement {
                             fillOpacity: 0.8,
                             weight: 2
                         }).addTo(this.fullmap);
+                        // Ajoute une légende discrète (popup ou tooltip)
+                        this.hoverMarker.bindTooltip(
+                            `<span>
+                                <b>Alt:</b> ${alt} m<br>
+                                <b>Sol:</b> ${sol} m
+                            </span>`,
+                            { permanent: true, direction: 'top', className: 'hover-alt-tooltip' }
+                        );
                     }
                 }
             });
 
-            // Ajoute un événement au clic sur le graphe
-            this.uplot.root.addEventListener('click', (e) => {
-                const idx = this.uplot.cursor.idx;
-                if (idx != null && idx >= 0 && idx < x.length) {
-                   // Récupère la position correspondante dans le GeoJSON
-                    const coords = this._feature.geometry.coordinates;
-                    const coord = coords[idx];
-                    if (coord) {
-                        const latlng = [coord[1], coord[0]]; // [lat, lng]
-                        // Supprime l'ancien marker de survol s'il existe
-                        if (this.hoverMarker) {
-                            this.fullmap.removeLayer(this.hoverMarker);
+            // Ajoute un événement au clic sur le graphique
+            graphDiv.querySelector('#graph-canvas').addEventListener('click', (e) => {
+                const points = this.chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
+                if (points.length > 0) {
+                    const idx = points[0].index;
+                    if (!this.cutAction && idx != null && idx >= 0 && idx < y1.length) {
+                        const coords = this._feature.geometry.coordinates;
+                        const coord = coords[idx];
+                        if (coord) {
+                            const latlng = [coord[1], coord[0]];
+                            if (this.hoverMarker) {
+                                this.fullmap.removeLayer(this.hoverMarker);
+                            }
+                            this.hoverMarker = L.circleMarker(latlng, {
+                                radius: 7,
+                                color: 'orange',
+                                fillColor: 'yellow',
+                                fillOpacity: 0.8,
+                                weight: 2
+                            }).addTo(this.fullmap);
+                            this.fullmap.setZoom(13);
+                            this.fullmap.panTo(this.hoverMarker.getLatLng());
                         }
-                        // Ajoute un nouveau marker (ou déplace l'existant)
-                        this.hoverMarker = L.circleMarker(latlng, {
-                            radius: 7,
-                            color: 'orange',
-                            fillColor: 'yellow',
-                            fillOpacity: 0.8,
-                            weight: 2
-                        }).addTo(this.fullmap);
-                        this.fullmap.setZoom(15);
                     }
-
-                    this.fullmap.panTo(this.hoverMarker.getLatLng())
-
-                    // // Par exemple, tu peux déclencher une action ou un événement personnalisé
-                    // const heure = arrayHour[idx];
-                    // const alt = y1[idx];
-                    // const sol = y2[idx];
-                    // console.log('Clic sur le graph à l’index', idx, 'Heure:', heure, 'Altitude:', alt, 'Sol:', sol);
-
-                    // // Exemple : émettre un événement personnalisé
-                    // this.dispatchEvent(new CustomEvent('graph-click', {
-                    //     detail: { idx, heure, alt, sol }
-                    // }));
                 }
             });
         }
