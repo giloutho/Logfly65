@@ -43,7 +43,7 @@ class ImpTable extends HTMLElement {
                     </div>
                 </div>  
                 <!-- Modal -->
-                <div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+                <div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel">
                     <div class="modal-dialog modal-lg modal-fullscreen">
                         <div class="modal-content">
                             <div class="modal-header">

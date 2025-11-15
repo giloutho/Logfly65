@@ -175,7 +175,7 @@ export class LogMap extends HTMLElement {
                     </div>
                 </div>
             </div>   
-            <div class="modal fade" id="fullmapModal" tabindex="-1" aria-labelledby="fullmapModalLabel" aria-hidden="true">
+            <div class="modal fade" id="fullmapModal" tabindex="-1" aria-labelledby="fullmapModalLabel">
               <div class="modal-dialog modal-fullscreen">
                 <div class="modal-content">                    
                     <div class="modal-body" id="fullmap-modal-body">
