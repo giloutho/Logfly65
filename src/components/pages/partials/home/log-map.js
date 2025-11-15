@@ -70,7 +70,10 @@ export class LogMap extends HTMLElement {
             }
             body.modal-open .map-overlay-bottom {
             display: none !important;
-            }            
+            }   
+            /* Style pour le label de la carte 
+            * où s'affiche les caractéristiques du vol sélectionné 
+            * déplacé dans la title-bar du log-details.js       
             .map-overlay-label {
                 background: #1a6dcc;
                 color: #fff;
@@ -85,6 +88,7 @@ export class LogMap extends HTMLElement {
                 pointer-events: auto;
                 text-align: left;
             }
+            */
             .map-buttons {
             /*    display: flex;
                 gap: 0.5rem;
@@ -233,9 +237,10 @@ export class LogMap extends HTMLElement {
         this.rowIndex = event.detail.rowIndex;           
         // console.log(`Row index : ${this.rowIndex} - Id_Vol: ${rowData.V_ID} - Engin: ${rowData.V_Engin} - Date: ${rowData.Day} ${rowData.Hour}`);
 
-        this.flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
-        const overlay = this.querySelector('#map-overlay-label');
-        if (overlay) overlay.textContent = this.flightLabel;
+        //  Déplacé dans la title-bar du log-details.js    
+        // this.flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
+        // const overlay = this.querySelector('#map-overlay-label');
+        // if (overlay) overlay.textContent = this.flightLabel;
 
         // const modalTitle = document.getElementById('fullmapModalLabel');
         // if (modalTitle) modalTitle.textContent = this.flightLabel;
