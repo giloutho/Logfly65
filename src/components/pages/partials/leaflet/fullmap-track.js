@@ -24,6 +24,7 @@ class FullmapTrack extends HTMLElement {
         this.hoverMarker = null;
         this.uplot = null;
         this._scoreMenuState = 'menu'; // 'menu' ou 'result'
+        this._winSpinner = null;
     }
 
     connectedCallback() {
@@ -485,6 +486,10 @@ class FullmapTrack extends HTMLElement {
             this.displayScoringResult(this, selLeague, resScoring.geojson);
         } else {
             console.warn('Erreur lors du calcul du score XC', resScoring.error);
+            let errorText = 'Error while calculating the score'+'<br><br>';
+            errorText += resScoring.error;
+            const title = this.gettext('Program error')
+            this.winModalDisplay(errorText, title, false, false, 'OK')
         }
     }
 
@@ -570,10 +575,7 @@ class FullmapTrack extends HTMLElement {
                         <div class="dropdown-menu p-3" id="airspaces-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
                             <!-- Le contenu sera injecté dynamiquement -->
                         </div>
-                    </div>
-                    <span id="airsp-spinner" class="spinner-border spinner-border-sm text-danger ms-3" role="status" style="display:none;">
-                        <span class="visually-hidden">Loading...</span>
-                    </span>                             
+                    </div>                         
                     <div class="dropdown">
                         <button id="score-dropdown-btn" class="btn btn-info dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Score
@@ -632,9 +634,6 @@ class FullmapTrack extends HTMLElement {
             const measureBtn = modalHeader.querySelector('#measure-btn');
             if (measureBtn) {
                 measureBtn.addEventListener('click', () => {
-                    // Action à définir pour la mesure
-                    console.log('Mesure activée');
-                    // Par exemple, activer le plugin de mesure Leaflet :
                     if (this.fullmap && this.measureControl) {
                         this.measureControl._toggleMeasure();
                     }
@@ -695,6 +694,10 @@ class FullmapTrack extends HTMLElement {
             this.displayOpenAipLayer(response.geojson)
         } else {
             console.log('Error loading openAIP airspaces', response.message);
+            let errorText = 'Error loading openAIP airspaces'+'<br><br>'
+            errorText += response.message;   
+            const title = this.gettext('Program error')
+            this.winModalDisplay(errorText, title, false, false, 'OK')                
         }
     }
 
@@ -719,8 +722,8 @@ class FullmapTrack extends HTMLElement {
     }
 
     async onCheckOpenAipClicked() {
-        const spinner = document.getElementById('airsp-spinner');
-        if (spinner) spinner.style.display = 'inline-block';
+        const winText = '<strong>'+this.gettext('Airspaces checking in progress')+'</strong>';
+        this.winModalDisplay(winText,'', true, false, this.gettext('Cancel'))
         const defaultFilter = {
             classes : [0,1,2,3,8],
             types : ['3','1','2'],
@@ -737,12 +740,19 @@ class FullmapTrack extends HTMLElement {
             }
         }
         const checkResult = await window.electronAPI.invoke(params);  
-        if (spinner) spinner.style.display = 'none';                
+        if (this._winSpinner) {
+            this._winSpinner.close();
+            this._winSpinner = null;
+        }                 
         if (checkResult.success) {
             console.log('OpenAIP incursions found:', checkResult.insidePoints.length); 
             this.displayAirCheck(checkResult,'openaip');         
         } else {
             console.log('Error checking openAIP airspaces', checkResult.message);
+            let errorText = 'Error checking openAIP airspaces'+'<br><br>'
+            errorText += checkResult.message;   
+            const title = this.gettext('Program error')
+            this.winModalDisplay(errorText, title, false, false, 'OK')                
         }   
     }
 
@@ -866,18 +876,9 @@ class FullmapTrack extends HTMLElement {
     */
 
     async onCheckBazileClicked() {
-        console.log('onCheckBazileClicked');
-        const waitingMsg = this.gettext('Airspaces checking in progress');
-        const winContent = `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
-                    <i class="bi bi-arrows-fullscreen"></i><strong>${waitingMsg}</strong>
-                    <img src="./static/images/waiting-mauve.gif" alt="spinner" />
-                </div>
-            `;
-        const winSpinner =  L.control.window(map,{title:'',maxWidth:400,modal: true,closeButton:false, position:'center'}).content(winContent);
-        winSpinner.show()
-        const spinner = document.getElementById('airsp-spinner');
-        if (spinner) spinner.style.display = 'inline-block';
+        const winText = '<strong>'+this.gettext('Airspaces checking in progress')+'</strong>';
+        this.winModalDisplay(winText,'', true, false, this.gettext('Cancel'))
+
         const memBazile = await window.electronAPI.storeGet('urlairspace')
         const defBazile = 'http://pascal.bazile.free.fr/paraglidingFolder/divers/GPS/OpenAir-Format/files/LastVers_ff-French-outT.txt'
         let baziUrl    
@@ -902,25 +903,28 @@ class FullmapTrack extends HTMLElement {
                 filePath : downloadResult.path,
                 track :  this._flightData.V_Track,
                 ground : this._flightAnalyze.elevations
+                }
             }
-        }
-        const checkResult = await window.electronAPI.invoke(params);  
-        if (spinner) spinner.style.display = 'none';    
-        winSpinner.close()            
-        if (checkResult.success) {
-            console.log('OpenAir incursions found:', checkResult.insidePoints.length); 
-            this.displayAirCheck(checkResult,'openair');         
-        } else {
-            console.log('Error checking openAir airspaces', checkResult.message);
-        }          
+            const checkResult = await window.electronAPI.invoke(params);  
+            if (this._winSpinner) {
+                this._winSpinner.close();
+                this._winSpinner = null;
+            }        
+            if (checkResult.success) {
+                this.displayAirCheck(checkResult,'openair');         
+            } else {
+                console.log('Error checking openAir airspaces', checkResult.message);
+                let errorText = 'Error checking openAir airspaces'+'<br><br>'
+                errorText += checkResult.message;   
+                const title = this.gettext('Program error')
+                this.winModalDisplay(errorText, title, false, false, 'OK')                     
+            }          
         } else {
             alert(`${this.gettext('Download error')} \n ${downloadResult.message} \n ${this.gettext('Check the URL in settings')}`);
-        }        
-        if (spinner) spinner.style.display = 'none';                
+        }                       
     }
 
     async onCheckFileClicked() {
-        console.log('onCheckFileClicked');
         const chooseMsg = this.gettext('Choose an openAir file');
         const paramsDialog = {
             invoketype: 'dialog:openfile',
@@ -937,10 +941,9 @@ class FullmapTrack extends HTMLElement {
         if (chooseOpenFile.canceled || chooseOpenFile.filePaths.length === 0) {
             return;
         }
-        console.log(this.gettext('Logbook selected')+': '+chooseOpenFile.filePaths[0]);
+        const winText = '<strong>'+this.gettext('Airspaces checking in progress')+'</strong>';
+        this.winModalDisplay(winText,'', true, false, this.gettext('Cancel'))
         const filePath = chooseOpenFile.filePaths[0];
-        const spinner = document.getElementById('airsp-spinner');
-        if (spinner) spinner.style.display = 'inline-block';
         const params = {    
             invoketype: 'openair:check',        
             args: {
@@ -949,17 +952,47 @@ class FullmapTrack extends HTMLElement {
                 ground : this._flightAnalyze.elevations
             }
         }
-        const checkResult = await window.electronAPI.invoke(params);  
-        if (spinner) spinner.style.display = 'none';                
+        const checkResult = await window.electronAPI.invoke(params);      
+        if (this._winSpinner) {
+            this._winSpinner.close();
+            this._winSpinner = null;
+        }              
         if (checkResult.success) {
             console.log('OpenAir incursions found:', checkResult.insidePoints.length); 
             this.displayAirCheck(checkResult,'openair');         
         } else {
-            console.log('Error checking openAir airspaces', checkResult.message);
+             console.log('Error checking openAir airspaces', checkResult.message);    
+            let errorText = 'Error checking openAir airspaces'+'<br>'
+            errorText += checkResult.message+'<br>';   
+            errorText += filePath;
+            const title = this.gettext('Program error')
+            this.winModalDisplay(errorText, title, false, false, 'OK')        
         }                        
     }   
-    
 
+    async winModalDisplay(winText, title, spinner, cancelButton, textOK) {
+        const spinnerDiv = '&nbsp;&nbsp;&nbsp;<span id="airsp-spinner" class="spinner-border text-danger" role="status"></span>';
+        let winContent = winText;
+        if (spinner) {
+            winContent += spinnerDiv;
+        }
+        this._winSpinner = L.control.window(map, {
+            title: title,
+            maxWidth: 400,
+            modal: true,
+            closeButton: false,
+            position: 'center',
+            prompt: {
+                buttonOK: textOK || this.gettext('OK'),
+                callback : async () => { 
+                    console.log('Airspace checking interrupted by user');
+                    await window.electronAPI.invoke('openair:interrupt');
+                }
+            }
+        }).content(winContent);
+        this._winSpinner.show();
+    }
+    
     gettext(key) {
         return this._i18n[key] || key;
     }        

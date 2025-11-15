@@ -33,6 +33,7 @@ const lineBreak = '\n'
 
 let openPolygons = {}
 let decodingReport
+let interrupted = false;
 
 ipcMain.handle('openair:display', async (event, args) => {
     // copié collé depuis airspaces-aip.js à adapter
@@ -67,7 +68,11 @@ ipcMain.handle('openair:check', async (event, args) => {
     }
 });
 
-function checkTrack(fileContent, track, ground) {
+ipcMain.handle('openair:interrupt', async () => {
+    interrupted = true;
+});
+
+async function checkTrack(fileContent, track, ground) {
     // Important to reset the variables at each call
     openPolygons = {
         airspaceSet : [],
@@ -83,7 +88,6 @@ function checkTrack(fileContent, track, ground) {
         insidePoints : []
     }    
     try {
-        console.log('On démarre checkTrack')
         const myPolygons = decodeOA(fileContent, false)
         console.log('Polygones décodés : ',myPolygons.airspaceSet.length)
         if (myPolygons.airspaceSet.length > 0) {    
@@ -117,6 +121,9 @@ function checkTrack(fileContent, track, ground) {
             let nbInside = 0
             let intersectSpaces = []
             for (let index = 0; index < myPolygons.airspaceSet.length; index++) {
+              if (interrupted) {
+                return { success: false, message: 'Processus interrompu par l’utilisateur.' };
+              }         
                 const element = myPolygons.airspaceSet[index].dbGeoJson
                 if (turfIntersect(element,geoTrack)) {
                     //console.log('intersect '+myPolygons.airspaceSet[index].dbGeoJson.properties.Name)
@@ -144,6 +151,7 @@ function checkTrack(fileContent, track, ground) {
                         }
                     }
                 } 
+                await new Promise(resolve => setImmediate(resolve));
             }
             console.log('Total track points in airspaces : ',turfNb, ' points inside airspaces : ',nbInside) 
             if (checkResult.insidePoints.length == 0) {
