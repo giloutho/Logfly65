@@ -33,19 +33,29 @@ class LogDetails extends HTMLElement {
           font-size: 0.8rem;
         }
         .dropdown-item {
-        font-size: 0.8rem;
-        color: #0d6efd;
+          font-size: 0.8rem;
+          color: #0d6efd;
         }
         .dropdown-item:hover,
         .dropdown-item:focus {
-        color: #0a58ca;
-        background-color: #e9ecef;
+          color: #0a58ca;
+          background-color: #e9ecef;
         }        
+      .title-bar {
+          background: rgb(13, 110, 253);
+          color: #fff;
+          width:100%; 
+          text-align:center; 
+          font-size:0.85rem; 
+          font-weight:bold; 
+          padding:0 0;
+      }        
       </style>   
       <log-gliders></log-gliders> 
       <log-sites></log-sites>  
       <div class="card h-100">
         <div class="card-header">
+           <div class="title-bar" id="title-bar">Détail du vol</div>          
           <ul class="nav nav-tabs card-header-tabs" id="flightTabs" role="tablist">
             <li class="nav-item">
               <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">${this.gettext('About')}</button>
@@ -177,6 +187,8 @@ class LogDetails extends HTMLElement {
             this.dbId = this.rowData.V_ID;
             this.rowIndex = event.detail.rowIndex;    
             const dbFlight = event.detail.dbFlight;
+            const flightTitle = this.rowData.Day+' '+this.rowData.V_Site+' '+this.rowData.Duree+' '+this.rowData.V_Engin;
+            this.querySelector('#title-bar').textContent = flightTitle;
            // console.log(this.rowData.V_Site+' '+this.rowData.V_Engin+' '+this.rowData.Day + ' ' + this.rowData.Hour);
             this.updateDetails(dbFlight);
         });
