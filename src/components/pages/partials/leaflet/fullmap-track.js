@@ -2,6 +2,7 @@ import * as mapMenus from './fullmap-track-menus.js';
 import * as mapUtils from './fullmap-track-utils.js';
 import * as mapBasics from './fullmap-track-map.js';
 import { airSpPopup } from './fullmap-track-popups.js';
+import {drawGraphAlti, drawGraphCutting} from './fullmap-track-graph.js';
 
 class FullmapTrack extends HTMLElement {
     constructor() {
@@ -25,6 +26,8 @@ class FullmapTrack extends HTMLElement {
         this.uplot = null;
         this._scoreMenuState = 'menu'; // 'menu' ou 'result'
         this._winSpinner = null;
+        this._cuttingAction = false;
+        this.highlightedSegment = null;
     }
 
     connectedCallback() {
@@ -42,47 +45,35 @@ class FullmapTrack extends HTMLElement {
                 }
                 #map {
                     width: 100%;
-                    height: 100%;
+                    height: calc(100% - 180px); /* 150px pour le graph + 30px pour graph-info */
                     min-height: 0;
                     position: relative;
-                    /* Optionnel : effet de transparence général */
-                    /* background: rgba(255,255,255,0.2); */
                 }
                 #graph-info {
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                    bottom: 150px; /* doit correspondre à la hauteur de #graph */
-                    z-index: 2000;
+                    width: 100%;
                     background: rgba(255, 255, 255, 0.92);
-                    font-size: 1.08em;
+                    font-size: 0.80em;
                     font-weight: 500;
                     color: #333;
                     border-radius: 8px 8px 0 0;
                     border-bottom: 1px solid #bbb;
                     padding: 8px 18px;
-                    margin: 0 20px;
+                    margin: 0 0 0 0;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                    pointer-events: none;
                     letter-spacing: 0.02em;
                     text-align: center;
                     transition: background 0.2s;
                 }
                 #graph {
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    z-index: 2000;
-                    height: 150px; /* adapte selon besoin */
+                    width: 100%;
+                    height: 150px;
                     min-height: 80px;
                     max-height: 250px;
-                    background: rgba(255,255,255,0.7);
+                    background: rgba(255,255,255,0.99);
                     margin: 0;
                     padding: 0;
                     overflow: hidden;
                     border-top: 1px solid #ddd;
-                    pointer-events: auto;
                 }
                 .u-legend { display: none !important; }    
                 .info-section {
@@ -100,10 +91,9 @@ class FullmapTrack extends HTMLElement {
                     box-shadow: 0 1px 4px rgba(160,82,45,0.08);
                 }               
             </style>
-            <div id="map">
-                <div id="graph-info"></div>
-                <div id="graph"></div>
-            </div>
+            <div id="map"></div>
+            <div id="graph-info"></div>
+            <div id="graph"></div>
         `;
     }
 
@@ -135,6 +125,24 @@ class FullmapTrack extends HTMLElement {
                 return;
             }
         });
+
+        document.addEventListener('fullscreenchange', () => {
+            const graphDiv = this.querySelector('#graph');
+            if (graphDiv) {
+                graphDiv.style.width = '100%';
+                if (this.uplot) {
+                    this.uplot.destroy();
+                    // Ajoute un délai pour laisser le DOM recalculer la taille
+                    setTimeout(() => {
+                        this.mapDrawGraph();
+                    }, 50); // 50 ms suffit généralement
+                }
+            }
+            // Optionnel : ajuster la carte Leaflet aussi
+            // if (this.fullmap) {
+            //     this.fullmap.invalidateSize();
+            // }
+        });        
     }
 
     async initMap() {
@@ -197,7 +205,9 @@ class FullmapTrack extends HTMLElement {
         this.mapUpdateControls();
                 // Ajoute ici le listener de clic sur la carte
         this.fullmap.on('click', (e) => {
-            const foundPolygons = mapUtils.findPolygonsAtClick(this._openaipGroup, e.latlng,this.fullmap);
+            if ( this._openaipGroup && this.fullmap.hasLayer(this._openaipGroup)) {
+                const foundPolygons = mapUtils.findPolygonsAtClick(this._openaipGroup, e.latlng,this.fullmap);
+            }
         });
     }
      mapLoadGeoJSON() {
@@ -217,138 +227,7 @@ class FullmapTrack extends HTMLElement {
     }
 
     mapDrawGraph() {
-        const arrayAlti = this._feature['geometry']['coordinates'].map(coord => coord[2]);
-        const arraySol = this._flightAnalyze && this._flightAnalyze.elevations
-            ? this._flightAnalyze.elevations
-            : [];
-        // times contained in the GeoJSon are only strings
-        // conversion to date object is necessary for Highcharts.dateFormat to work on the x axis
-        const arrayHour = this._feature['properties']['coordTimes'].map(hour => new Date(hour));
-        const x = arrayHour.map(date => date.getTime());
-        const y1 = arrayAlti;
-        // Si arraySol n'est pas de la bonne taille, on le remplit avec null ou undefined
-        let y2 = [];
-        if (arraySol.length === arrayAlti.length) {
-            y2 = arraySol;
-        } else if (arraySol.length > 0) {
-            // Adapter la taille si besoin (optionnel)
-            y2 = arrayAlti.map((_, i) => arraySol[i] ?? null);
-        }
-
-        const graphDiv = this.querySelector('#graph');
-        if (graphDiv) {
-            graphDiv.innerHTML = "";
-            const options = {
-                width: graphDiv.offsetWidth || 600,
-                height: 150,
-                series: [
-                    {},
-                    { label: "Altitude", stroke: "blue", width: 2 },
-                    { 
-                        label: "Altitude sol",
-                        stroke: "Sienna",
-                        width: 2,
-                        fill: "rgba(160, 82, 45, 0.18)" // Remplissage sous la courbe
-                    }
-                ],
-                axes: [
-                    {
-                        values: (u, ticks) => ticks.map(ts => {
-                            const d = new Date(ts);
-                            //return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                            return d.getUTCHours().toString().padStart(2, '0') + ':' +d.getUTCMinutes().toString().padStart(2, '0');
-                        }),
-                      //  label: "Heure"
-                    },
-                    { label: "Altitude (m)" }
-                ]
-            };
-            const data = [x, y1, y2.length ? y2 : new Array(y1.length).fill(null)];
-            this.uplot = new uPlot(options, data, graphDiv);
-
-            const graphInfoDiv = this.querySelector('#graph-info');
-            if (graphInfoDiv) {
-                graphInfoDiv.textContent = ''; // vide au départ
-            }
-
-            // Affichage dynamique de l'info au survol
-            this.uplot.root.addEventListener('mousemove', e => {
-                const idx = this.uplot.cursor.idx;
-                if (idx != null && idx >= 0 && idx < x.length) {
-                    const heure = arrayHour[idx];
-                    const alt = y1[idx];
-                    const sol = y2[idx];
-                   // console.log(this._flightData.V_Track.vz[idx].toFixed(2)+'m/s  '+this._flightData.V_Track.speed[idx].toFixed(0)+' km/h')
-                    graphInfoDiv.innerHTML =
-                        `<span style="color:#1a6dcc;font-weight:bold;">🕒 ${heure.getUTCHours().toString().padStart(2, '0')}:${heure.getUTCMinutes().toString().padStart(2, '0')}</span>
-                        &nbsp;|&nbsp;
-                        <span style="color:#1976d2;">⛰️ ${alt} m</span>
-                        &nbsp;|&nbsp;
-                        <span style="color:Sienna;">🟫 ${sol} m</span>
-                        &nbsp;|&nbsp;
-                        <span style="color:#388e3c;">⬇️ ${this._flightData.V_Track.vz[idx].toFixed(2)} m/s</span>
-                        &nbsp;|&nbsp;
-                        <span style="color:#e65100;">➡️ ${this._flightData.V_Track.speed[idx].toFixed(0)} km/h</span>`;
-                    // Récupère la position correspondante dans le GeoJSON
-                    const coords = this._feature.geometry.coordinates;
-                    const coord = coords[idx];
-                    if (coord) {
-                        const latlng = [coord[1], coord[0]]; // [lat, lng]
-                        // Supprime l'ancien marker de survol s'il existe
-                        if (this.hoverMarker) {
-                            this.fullmap.removeLayer(this.hoverMarker);
-                        }
-                        // Ajoute un nouveau marker (ou déplace l'existant)
-                        this.hoverMarker = L.circleMarker(latlng, {
-                            radius: 7,
-                            color: 'orange',
-                            fillColor: 'yellow',
-                            fillOpacity: 0.8,
-                            weight: 2
-                        }).addTo(this.fullmap);
-                    }
-                }
-            });
-
-            // Ajoute un événement au clic sur le graphe
-            this.uplot.root.addEventListener('click', (e) => {
-                const idx = this.uplot.cursor.idx;
-                if (idx != null && idx >= 0 && idx < x.length) {
-                   // Récupère la position correspondante dans le GeoJSON
-                    const coords = this._feature.geometry.coordinates;
-                    const coord = coords[idx];
-                    if (coord) {
-                        const latlng = [coord[1], coord[0]]; // [lat, lng]
-                        // Supprime l'ancien marker de survol s'il existe
-                        if (this.hoverMarker) {
-                            this.fullmap.removeLayer(this.hoverMarker);
-                        }
-                        // Ajoute un nouveau marker (ou déplace l'existant)
-                        this.hoverMarker = L.circleMarker(latlng, {
-                            radius: 7,
-                            color: 'orange',
-                            fillColor: 'yellow',
-                            fillOpacity: 0.8,
-                            weight: 2
-                        }).addTo(this.fullmap);
-                        this.fullmap.setZoom(15);
-                    }
-
-                    this.fullmap.panTo(this.hoverMarker.getLatLng())
-
-                    // // Par exemple, tu peux déclencher une action ou un événement personnalisé
-                    // const heure = arrayHour[idx];
-                    // const alt = y1[idx];
-                    // const sol = y2[idx];
-                    // console.log('Clic sur le graph à l’index', idx, 'Heure:', heure, 'Altitude:', alt, 'Sol:', sol);
-
-                    // // Exemple : émettre un événement personnalisé
-                    // this.dispatchEvent(new CustomEvent('graph-click', {
-                    //     detail: { idx, heure, alt, sol }
-                    // }));
-                }
-            });
-        }
+        drawGraphAlti(this);
     }
 
     updateHeader() {
@@ -421,6 +300,15 @@ class FullmapTrack extends HTMLElement {
             }
         }        
         
+        const measureBtn = document.getElementById('measure-btn');
+        if (measureBtn) {
+            measureBtn.textContent = this.gettext('Measure');
+        }   
+
+        const cuttingBtn = document.getElementById('cutting-btn');
+        if (cuttingBtn) {
+            cuttingBtn.textContent = this.gettext('Cutting');
+        }    
     }
 
     generateInfoSections() {
@@ -585,8 +473,11 @@ class FullmapTrack extends HTMLElement {
                         </div>
                     </div>
                     <button id="measure-btn" class="btn btn-secondary btn-sm" type="button">
-                        Mesurer
-                    </button>           
+                        Mesureroi
+                    </button>      
+                    <button id="cutting-btn" class="btn btn-danger btn-sm" type="button">
+                        Découper
+                    </button>                            
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
@@ -639,6 +530,23 @@ class FullmapTrack extends HTMLElement {
                     }
                 });
             }
+
+            const cuttingBtn = modalHeader.querySelector('#cutting-btn');
+            if (cuttingBtn) {
+                cuttingBtn.addEventListener('click', () => {
+                    if (this.fullmap) {
+                        if (!this._cuttingAction) {
+                            cuttingBtn.classList.add('btn-active');
+                            this._cuttingAction = true;
+                            this.cutoutTrack();
+                        } else {
+                            cuttingBtn.classList.remove('btn-active');
+                            this._cuttingAction = false;
+                            this.cutoutCancel();
+                        }
+                    }
+                });
+            }   
 
             const scoreBtn = modalHeader.querySelector('#score-dropdown-btn');
             const scoreDropdownMenu = modalHeader.querySelector('#score-dropdown-menu');
@@ -969,6 +877,62 @@ class FullmapTrack extends HTMLElement {
             this.winModalDisplay(errorText, title, false, false, 'OK')        
         }                        
     }   
+
+    cutoutTrack() {
+        if (this.fullmap) {
+            // Désactive tous les boutons du header
+            const infoBtn = document.getElementById('info-dropdown-btn');
+            const chronoBtn = document.getElementById('chrono-dropdown-btn');
+            const airspacesBtn = document.getElementById('airspaces-dropdown-btn');
+            const scoreBtn = document.getElementById('score-dropdown-btn');
+            const measureBtn = document.getElementById('measure-btn');
+            const cuttingBtn = document.getElementById('cutting-btn');
+
+            if (infoBtn) infoBtn.disabled = true;
+            if (chronoBtn) chronoBtn.disabled = true;
+            if (airspacesBtn) airspacesBtn.disabled = true;
+            if (scoreBtn) scoreBtn.disabled = true;
+            if( measureBtn) measureBtn.disabled = true;
+            if (cuttingBtn) {
+                cuttingBtn.textContent = 'Annuler';
+            }            
+            drawGraphCutting(this);
+        }
+    }
+
+    cutoutCancel() {
+        if (this.fullmap) {
+            // Supprime les marqueurs de découpe s'ils existent
+            if (this.startCutMarker) {
+                this.fullmap.removeLayer(this.startCutMarker);
+                this.startCutMarker = null;
+            }
+            if (this.endCutMarker) {
+                this.fullmap.removeLayer(this.endCutMarker);
+                this.endCutMarker = null;
+            }      
+            if (this.highlightedSegment) {
+                this.fullmap.removeLayer(this.highlightedSegment);
+                this.highlightedSegment = null;
+            }                  
+            // Réactive tous les boutons du header
+            const infoBtn = document.getElementById('info-dropdown-btn');
+            const chronoBtn = document.getElementById('chrono-dropdown-btn');
+            const airspacesBtn = document.getElementById('airspaces-dropdown-btn');
+            const scoreBtn = document.getElementById('score-dropdown-btn');
+            const measureBtn = document.getElementById('measure-btn');
+            const cuttingBtn = document.getElementById('cutting-btn');      
+            if (infoBtn) infoBtn.disabled = false;
+            if (chronoBtn) chronoBtn.disabled = false;
+            if (airspacesBtn) airspacesBtn.disabled = false;
+            if (scoreBtn) scoreBtn.disabled = false;
+            if( measureBtn) measureBtn.disabled = false;
+            if (cuttingBtn) {
+                cuttingBtn.textContent = this.gettext('Cutting');
+            }             
+            drawGraphAlti(this);
+        }
+    }
 
     async winModalDisplay(winText, title, spinner, cancelButton, textOK) {
         const spinnerDiv = '&nbsp;&nbsp;&nbsp;<span id="airsp-spinner" class="spinner-border text-danger" role="status"></span>';
