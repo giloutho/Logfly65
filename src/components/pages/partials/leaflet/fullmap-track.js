@@ -25,7 +25,8 @@ class FullmapTrack extends HTMLElement {
         this.uplot = null;
         this._scoreMenuState = 'menu'; // 'menu' ou 'result'
         this._winSpinner = null;
-        this.cutAction = false;
+        this.cutAction = true;
+        this.clickedIndex = null;
     }
 
     connectedCallback() {
@@ -237,6 +238,7 @@ class FullmapTrack extends HTMLElement {
         const labels = arrayHour.map(date =>
             date.getUTCHours().toString().padStart(2, '0') + ':' + date.getUTCMinutes().toString().padStart(2, '0')
         );
+        console.log('arrayAlti ', arrayAlti.length, 'arrayHour', arrayHour.length, 'arraySol', arraySol.length);
         const y1 = arrayAlti;
         let y2 = [];
         if (arraySol.length === arrayAlti.length) {
@@ -244,6 +246,27 @@ class FullmapTrack extends HTMLElement {
         } else if (arraySol.length > 0) {
             y2 = arrayAlti.map((_, i) => arraySol[i] ?? null);
         }
+
+        const verticalLinePlugin = {
+            id: 'verticalLineOnClick',
+            afterDraw: (chart) => {
+                if (this.clickedIndex !== null) {
+                    const ctx = chart.ctx;
+                    const x = chart.scales.x.getPixelForValue(this.clickedIndex);
+                    const topY = chart.scales.y.top;
+                    const bottomY = chart.scales.y.bottom;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    ctx.moveTo(x, topY);
+                    ctx.lineTo(x, bottomY);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#e65100';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        };        
 
         const graphDiv = this.querySelector('#graph');
         if (graphDiv) {
@@ -268,6 +291,7 @@ class FullmapTrack extends HTMLElement {
                             backgroundColor: "rgba(0,0,255,0.08)",
                             fill: false,
                             pointRadius: 0,
+                            pointHoverRadius: 8,
                             tension: 0.1
                         },
                         {
@@ -277,6 +301,7 @@ class FullmapTrack extends HTMLElement {
                             backgroundColor: "rgba(160,82,45,0.18)",
                             fill: true,
                             pointRadius: 0,
+                            pointHoverRadius: 8, 
                             tension: 0.1
                         }
                     ]
@@ -297,6 +322,7 @@ class FullmapTrack extends HTMLElement {
                         }
                     }
                 },
+                plugins: [verticalLinePlugin]
             });
 
             // Affichage dynamique de l'info au survol
@@ -348,31 +374,19 @@ class FullmapTrack extends HTMLElement {
                     }
                 }
             });
-
             // Ajoute un événement au clic sur le graphique
             graphDiv.querySelector('#graph-canvas').addEventListener('click', (e) => {
                 const points = this.chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
                 if (points.length > 0) {
                     const idx = points[0].index;
-                    if (!this.cutAction && idx != null && idx >= 0 && idx < y1.length) {
-                        const coords = this._feature.geometry.coordinates;
-                        const coord = coords[idx];
-                        if (coord) {
-                            const latlng = [coord[1], coord[0]];
-                            if (this.hoverMarker) {
-                                this.fullmap.removeLayer(this.hoverMarker);
-                            }
-                            this.hoverMarker = L.circleMarker(latlng, {
-                                radius: 7,
-                                color: 'orange',
-                                fillColor: 'yellow',
-                                fillOpacity: 0.8,
-                                weight: 2
-                            }).addTo(this.fullmap);
-                            this.fullmap.setZoom(13);
-                            this.fullmap.panTo(this.hoverMarker.getLatLng());
-                        }
+                    const coords = this._feature.geometry.coordinates;
+                    const coord = coords[idx];
+                    if (this.cutAction) {
+                        console.log('Index cliqué:', idx, 'Coordonnées:', coord);
+                        this.clickedIndex = idx;
+                        this.chartInstance.update();
                     }
+                    // ...autres cas...
                 }
             });
         }
@@ -1022,7 +1036,7 @@ class FullmapTrack extends HTMLElement {
     
     gettext(key) {
         return this._i18n[key] || key;
-    }        
+    }      
 }
 
 window.customElements.define('fullmap-track', FullmapTrack);
