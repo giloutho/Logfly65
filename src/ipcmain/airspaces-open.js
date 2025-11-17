@@ -70,6 +70,7 @@ ipcMain.handle('openair:check', async (event, args) => {
 
 ipcMain.handle('openair:interrupt', async () => {
     interrupted = true;
+    console.log('interruption demandée pour openair');
 });
 
 async function checkTrack(fileContent, track, ground) {

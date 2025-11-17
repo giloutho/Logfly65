@@ -192,7 +192,6 @@ export function drawGraphCutting(context) {
                             // Correction : idx1 ne doit pas dépasser le dernier index
                             idx1 = Math.min(idx1, context._flightData.V_Track.fixes.length - 1);
                             
-                            console.log("Sélection de", idx0, "à", idx1);
                             plotCutMarkers(context, idx0, idx1);                
                         }
                     }
@@ -291,4 +290,9 @@ function plotCutMarkers(context, idx0, idx1) {
         dashArray: '8,6'
     }).addTo(context.fullmap);
 
+    // fenêtre confirmation
+    const winTitle = context.gettext('Cutting track confirmation');
+    let winText = context.gettext('The retained part will be between the two markers.')+'<br><br>'
+    winText += context.gettext('Are you sure you want to continue')+' ?'; 
+    context.winModalDisplay(winText,winTitle, false, context.gettext('Cancel'), context.gettext('Confirm'))
 }

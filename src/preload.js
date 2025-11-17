@@ -14,6 +14,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return ipcRenderer.invoke(channel, args);
   },
 
+  send: (channel) => {
+      ipcRenderer.send(channel);
+  },
+
   quitApp: () => ipcRenderer.send("app:quit"),
 });
 

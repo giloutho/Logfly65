@@ -6,6 +6,7 @@ export class LogMap extends HTMLElement {
     this.i18n = {} // initialisé par le parent
     this.map = null;  
     this.dbFlight = null;    
+    this.selectedRowData = null;
     this.flightLabel = null;          
     this.geoJsonLayer = null;      
     this.startIcon = null;
@@ -233,9 +234,14 @@ export class LogMap extends HTMLElement {
     
     rowSelectedHandler = (event) => {
         const rowData = event.detail.rowData;
-        this.selectedRowData = rowData;
-        this.rowIndex = event.detail.rowIndex;           
-        // console.log(`Row index : ${this.rowIndex} - Id_Vol: ${rowData.V_ID} - Engin: ${rowData.V_Engin} - Date: ${rowData.Day} ${rowData.Hour}`);
+        console.log('event.detail.rowIndex ',event.detail.rowIndex)
+        this.selectedRowData = {
+            rowIndex: event.detail.rowIndex,
+            ...event.detail.rowData
+        };
+        this.rowIndex = event.detail.rowIndex;   
+        //console.log(this.selectedRowData);               
+        //console.log(`Row index : ${this.selectedRowData.rowIndex} - Id_Vol: ${this.selectedRowData.V_ID} - Engin: ${this.selectedRowData.V_Engin} - Date: ${this.selectedRowData.Day} ${this.selectedRowData.Hour}`);
 
         //  Déplacé dans la title-bar du log-details.js    
         // this.flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
@@ -402,6 +408,7 @@ export class LogMap extends HTMLElement {
                 fullmapTrack.i18n = this.i18n;
                 fullmapTrack.flightData = this.dbFlight; 
                 fullmapTrack.flightAnalyze = analyzeResult.success ? analyzeResult.anaTrack : null;
+                fullmapTrack.tableData = this.selectedRowData;
                 if (fullmapTrack.fullmap) {
                     fullmapTrack.fullmap.invalidateSize();
                 }
