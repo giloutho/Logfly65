@@ -86,3 +86,9 @@ ipcMain.handle('file:download', async (event, args) => {
         });
     });
 });
+
+ipcMain.handle('box:error', async (event, args) => {
+    const { title, message } = args;
+    dialog.showErrorBox(title || 'Error', message || 'An error has occurred.');
+    return { success: true };
+});
