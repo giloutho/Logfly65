@@ -147,8 +147,7 @@ class FullmapTrack extends HTMLElement {
     }
 
     async initMap() {
-        await mapBasics.initMap.call(this);   
-        this._winSpinner = L.control.window(map, {title: '', maxWidth: 400, modal: true, closeButton: false, position: 'center'});
+        await mapBasics.initMap.call(this);          
         this.initFullmapModalHeader();
     }    
 
@@ -795,9 +794,6 @@ class FullmapTrack extends HTMLElement {
     */
 
     async onCheckBazileClicked() {
-        const winText = '<strong>'+this.gettext('Airspaces checking in progress')+'</strong>';
-        this.winModalDisplay(winText,'', true, '', this.gettext('Cancel'))
-
         const memBazile = await window.electronAPI.storeGet('urlairspace')
         const defBazile = 'http://pascal.bazile.free.fr/paraglidingFolder/divers/GPS/OpenAir-Format/files/LastVers_ff-French-outT.txt'
         let baziUrl    
@@ -816,6 +812,9 @@ class FullmapTrack extends HTMLElement {
         const downloadResult = await window.electronAPI.invoke(params); 
         if (downloadResult.success) {
             console.log(`Fichier téléchargé dans : ${downloadResult.path}`);
+            // On ne gère pas un interruption utilisateur dans le download
+            const winText = '<strong>'+this.gettext('Airspaces checking in progress')+'</strong>';
+            this.winModalDisplay(winText,'', true, '', this.gettext('Cancel'))
             const params = {    
             invoketype: 'openair:check',        
             args: {
@@ -825,18 +824,22 @@ class FullmapTrack extends HTMLElement {
                 }
             }
             const checkResult = await window.electronAPI.invoke(params);  
-            if (this._winSpinner) {
-                this._winSpinner.close();
-                this._winSpinner = null;
-            }        
+   
             if (checkResult.success) {
+                if (this._winSpinner) {
+                    this._winSpinner.close();
+                    this._winSpinner = null;
+                }                     
                 this.displayAirCheck(checkResult,'openair');         
             } else {
-                console.log('Error checking openAir airspaces', checkResult.message);
-                let errorText = 'Error checking openAir airspaces'+'<br><br>'
-                errorText += checkResult.message;   
-                const title = this.gettext('Program error')
-                this.winModalDisplay(errorText, title, false, '', 'OK')                     
+                const params = {    
+                    invoketype: 'box:error',        
+                    args: {
+                        title: this.gettext('Error checking openAir airspaces'),
+                        message: checkResult.message || 'Unknown error'
+                    } 
+                }
+                const errorBoxResult = await window.electronAPI.invoke(params);              
             }          
         } else {
             alert(`${this.gettext('Download error')} \n ${downloadResult.message} \n ${this.gettext('Check the URL in settings')}`);
@@ -872,24 +875,21 @@ class FullmapTrack extends HTMLElement {
             }
         }
         const checkResult = await window.electronAPI.invoke(params);      
-        if (this._winSpinner) {
-            try {
-                this._winSpinner.close();
-            } catch (e) {
-                console.warn('Erreur lors de la fermeture du contrôle window:', e);
-            }
-            this._winSpinner = null;
-        }          
         if (checkResult.success) {
-            console.log('OpenAir incursions found:', checkResult.insidePoints.length); 
+            if (this._winSpinner) {
+                this._winSpinner.close();
+                this._winSpinner = null;
+            }            
             this.displayAirCheck(checkResult,'openair');         
-        } else {
-             console.log('Error checking openAir airspaces', checkResult.message);    
-            let errorText = 'Error checking openAir airspaces'+'<br>'
-            errorText += checkResult.message+'<br>';   
-            errorText += filePath;
-            const title = this.gettext('Program error')
-            this.winModalDisplay(errorText, title, false, '', 'OK')        
+        } else {          
+            const params = {    
+                invoketype: 'box:error',        
+                args: {
+                    title: this.gettext('Error checking openAir airspaces'),
+                    message: checkResult.message || 'Unknown error'
+                } 
+            }
+            const errorBoxResult = await window.electronAPI.invoke(params);
         }                        
     }   
 
@@ -955,31 +955,23 @@ class FullmapTrack extends HTMLElement {
         if (spinner) {
             winContent += spinnerDiv;
         }
-        // this._winSpinner = L.control.window(
-        //     map, 
-        //     {
-        //         title: title,
-        //         maxWidth: 400,
-        //         modal: true,
-        //         closeButton: false,
-        //         position: 'center'})
-        //     .prompt({
-        //         buttonOK: textOK || this.gettext('OK'),
-        //         callback : async () => { 
-        //             console.log('Airspace checking interrupted by user');
-        //             window.electronAPI.send('openair:interrupt');
-        //         },
-        //         buttonCancel: cancelText,
-        //     })
-        //     .content(winContent);
-        this._winSpinner.prompt({
+        this._winSpinner = L.control.window(
+            map, 
+            {
+                title: title,
+                maxWidth: 400,
+                modal: true,
+                closeButton: false,
+                position: 'center'})
+            .prompt({
                 buttonOK: textOK || this.gettext('OK'),
                 callback : async () => { 
                     console.log('Airspace checking interrupted by user');
                     window.electronAPI.send('openair:interrupt');
                 },
                 buttonCancel: cancelText,
-            }).content(winContent);
+            })
+            .content(winContent);
         this._winSpinner.show();
     }
     

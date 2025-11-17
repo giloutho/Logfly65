@@ -31,7 +31,6 @@ let maxLon
 const STEP_SIZE = 1
 const lineBreak = '\n'
 
-let openPolygons = {}
 let decodingReport
 let interrupted = false;
 
@@ -58,24 +57,105 @@ ipcMain.handle('openair:check', async (event, args) => {
         const fileContent = await fs.readFile(openAirPath, 'utf-8');
         // Vérification du contenu
         if (!fileContent || fileContent.trim() === '') {
-            return { success: false, message: 'Le fichier OpenAir est vide ou n’a pas pu être lu.' };
+            return { success: false, message: 'The selected file is empty or could not be read' };
         }
         const checkResult = await checkTrack(fileContent, track, ground);
-        console.log('checkResult ',checkResult.insidePoints.length)
         return checkResult                   
     } catch (err) {
-        return { success: false, message: 'Erreur lecture fichier OpenAir : ' + err.message };
+        if(!interrupted) {
+            return { success: false, message: 'Erreur lecture fichier OpenAir : ' + err.message };
+        } else {
+            return { success: false, message: 'Processus interrompu par l’utilisateur' };
+        }
     }
 });
 
-ipcMain.handle('openair:interrupt', async () => {
-    interrupted = true;
-    console.log('interruption demandée pour openair');
+ipcMain.on('openair:interrupt', (event) => {
+  interrupted = true;
 });
 
-async function checkTrack(fileContent, track, ground) {
-    // Important to reset the variables at each call
-    openPolygons = {
+
+async function checkTrack(fileContent, track, ground) { 
+    try {
+        interrupted = false
+        const myPolygons = decodeOA(fileContent, false)
+        if (myPolygons.airspaceSet.length > 0) {  
+            checkResult = await processPolygonsWithInterval(myPolygons, track, ground);
+            if (checkResult.success == false) {
+              console.log('Return in checkTrack',checkResult.message)
+            }
+            return checkResult;
+        }    
+    } catch (e) {
+        return { success: false, message: 'Error during airspaces decoding: ' + e.message };
+    }
+    return;
+}
+
+async function processPolygonsWithInterval(myPolygons, track, ground) {
+    return new Promise((resolve) => {
+        let index = 0;
+        let checkResult = {
+            airGeoJson : [],
+            insidePoints : []
+        };
+        let intersectSpaces = [];
+        let turfNb = 0;
+        let nbInside = 0;
+
+        const trackPoints = track.fixes.map(point => [point.longitude, point.latitude]);
+        const geoTrack = track.GeoJSON;
+        const multiPt = turfHelper.multiPoint(trackPoints);
+
+        const intervalId = setInterval(() => {
+            if (interrupted) {
+                clearInterval(intervalId);
+                resolve({ success: false, message: 'Processus interrompu par l’utilisateur' });
+                return;
+            }
+            if (index >= myPolygons.airspaceSet.length) {
+                clearInterval(intervalId);
+                if (checkResult.insidePoints.length == 0) {
+                    for (let i = 0; i < intersectSpaces.length; i++) {
+                        checkResult.airGeoJson.push(intersectSpaces[i]);
+                    }
+                }
+                resolve({ success: true, ...checkResult });
+                return;
+            }
+            const element = myPolygons.airspaceSet[index].dbGeoJson;
+            if (turfIntersect(element, geoTrack)) {
+                intersectSpaces.push(element);
+                let pushGeoJson = false;
+                let ptsWithin = turfWithin(multiPt, element);
+                for (let i = 0; i < ptsWithin.features.length; i++) {
+                    const feature = ptsWithin.features[i];
+                    for (let j = 0; j < feature.geometry.coordinates.length; j++) {
+                        turfNb++;
+                        const vPoint = feature.geometry.coordinates[j];
+                        let idxPoint = trackPoints.findIndex(e => e[0] === vPoint[0] && e[1] === vPoint[1]);
+                        let floorLimit = element.properties.Floor;
+                        let ceilingLimit = element.properties.Ceiling;
+                        if (element.properties.altLimitBottomAGL === true) floorLimit += ground[idxPoint];
+                        if (element.properties.altLimitTopAGL === true) ceilingLimit += ground[idxPoint];
+                        if (track.fixes[idxPoint].gpsAltitude > floorLimit && track.fixes[idxPoint].gpsAltitude < ceilingLimit) {
+                            nbInside++;
+                            if (!pushGeoJson) {
+                                checkResult.airGeoJson.push(element);
+                                pushGeoJson = true;
+                            }
+                            checkResult.insidePoints.push(idxPoint);
+                        }
+                    }
+                }
+            }
+            index++;
+        }, 10); // 10 ms entre chaque itération
+    });
+}
+
+function decodeOA(oaText, modeReport) {  
+    let openPolygons = {
         airspaceSet : [],
         report : '',
         center : {
@@ -83,93 +163,7 @@ async function checkTrack(fileContent, track, ground) {
             lat : 0
         },
     } 
-    decodingReport = ''
-    let checkResult = {
-        airGeoJson : [],
-        insidePoints : []
-    }    
-    try {
-        const myPolygons = decodeOA(fileContent, false)
-        console.log('Polygones décodés : ',myPolygons.airspaceSet.length)
-        if (myPolygons.airspaceSet.length > 0) {    
-                /* As a reminder
-                Track.fixes  structure      
-                {
-                    "timestamp": 1436439971000,
-                    "time": "11:06:11",
-                    "latitude": 45.60595,
-                    "longitude": 6.2133666666666665,
-                    "valid": true,
-                    "pressureAltitude": 1722,
-                    "gpsAltitude": 1819,
-                    "extensions": {
-                        "FXA": "009",
-                        "GSP": "03231",
-                        "TRT": "045",
-                        "VAT": "00082"
-                    },
-                    "enl": null,
-                    "fixAccuracy": 9
-                } 
-            */
-
-            // In order to use turfWithin below, the fixes array must be converted in a "turf multipoint object"
-            let trackPoints = track.fixes.map(point => [point.longitude,point.latitude] )
-            let altMaxPoint = track.stat.maxalt.gps
-            let multiPt = turfHelper.multiPoint(trackPoints)
-            let geoTrack = track.GeoJSON
-            let turfNb = 0
-            let nbInside = 0
-            let intersectSpaces = []
-            for (let index = 0; index < myPolygons.airspaceSet.length; index++) {
-              if (interrupted) {
-                return { success: false, message: 'Processus interrompu par l’utilisateur.' };
-              }         
-                const element = myPolygons.airspaceSet[index].dbGeoJson
-                if (turfIntersect(element,geoTrack)) {
-                    //console.log('intersect '+myPolygons.airspaceSet[index].dbGeoJson.properties.Name)
-                    intersectSpaces.push(element)
-                    let pushGeoJson = false
-                    let ptsWithin = turfWithin(multiPt, element)
-                    for (let i = 0; i < ptsWithin.features.length; i++) {
-                        const feature = ptsWithin.features[i]
-                        for (let j = 0; j < feature.geometry.coordinates.length; j++) {
-                            turfNb ++               
-                            const vPoint = feature.geometry.coordinates[j]
-                            idxPoint = trackPoints.findIndex(e => e === vPoint)
-                            let floorLimit = element.properties.Floor
-                            let ceilingLimit = element.properties.Ceiling             
-                            if (element.properties.altLimitBottomAGL === true) floorLimit += ground[idxPoint]
-                            if (element.properties.altLimitTopAGL ===  true) ceilingLimit += ground[idxPoint]
-                            if (track.fixes[idxPoint].gpsAltitude > floorLimit && track.fixes[idxPoint].gpsAltitude < ceilingLimit) {
-                                nbInside++
-                                if (!pushGeoJson) {
-                                    checkResult.airGeoJson.push(element)
-                                    pushGeoJson = true
-                                }          
-                                checkResult.insidePoints.push(idxPoint)
-                            }              
-                        }
-                    }
-                } 
-                await new Promise(resolve => setImmediate(resolve));
-            }
-            console.log('Total track points in airspaces : ',turfNb, ' points inside airspaces : ',nbInside) 
-            if (checkResult.insidePoints.length == 0) {
-                for (let index = 0; index < intersectSpaces.length; index++) {        
-                    checkResult.airGeoJson.push(intersectSpaces[index])   
-                }
-            }
-            return { success: true, ...checkResult }
-        }    
-    } catch (e) {
-        return { success: false, message: 'Error during airspaces decoding: ' + e.message };
-    }
-
-    return;
-}
-
-function decodeOA(oaText, modeReport) {  
+    let decodingReport = ''
     console.log('On démarre decodeOA')
     modeDebug = modeReport
     let lines = oaText.split('\n')
