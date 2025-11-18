@@ -63,9 +63,9 @@ ipcMain.handle('openair:check', async (event, args) => {
         return checkResult                   
     } catch (err) {
         if(!interrupted) {
-            return { success: false, message: 'Erreur lecture fichier OpenAir : ' + err.message };
+            return { success: false, message: 'Error reading OpenAir file: ' + err.message };
         } else {
-            return { success: false, message: 'Processus interrompu par l’utilisateur' };
+            return { success: false, message: 'Process terminated by the user' };
         }
     }
 });
@@ -110,7 +110,7 @@ async function processPolygonsWithInterval(myPolygons, track, ground) {
         const intervalId = setInterval(() => {
             if (interrupted) {
                 clearInterval(intervalId);
-                resolve({ success: false, message: 'Processus interrompu par l’utilisateur' });
+                resolve({ success: false, message: 'Process terminated by the user' });
                 return;
             }
             if (index >= myPolygons.airspaceSet.length) {
