@@ -237,7 +237,7 @@ export function drawGraphCutting(context) {
     }
 }
 
-function plotCutMarkers(context, idx0, idx1) {
+async function plotCutMarkers(context, idx0, idx1) {
     const fixes = context._flightData.V_Track.fixes;
     // from https://github.com/pointhi/leaflet-color-markers
     const purpleIcon = new L.Icon({
@@ -291,8 +291,28 @@ function plotCutMarkers(context, idx0, idx1) {
     }).addTo(context.fullmap);
 
     // fenêtre confirmation
-    const winTitle = context.gettext('Cutting track confirmation');
-    let winText = context.gettext('The retained part will be between the two markers.')+'<br><br>'
+    // const winTitle = context.gettext('Cutting track confirmation');
+    // let winText = context.gettext('The retained part will be between the two markers.')+'<br><br>'
+    // winText += context.gettext('Are you sure you want to continue')+' ?'; 
+    // context.winModalDisplay(winText,winTitle, false, context.gettext('Cancel'), context.gettext('Confirm'))
+    let winText = context.gettext('The retained part will be between the two markers')+'\n\n'
     winText += context.gettext('Are you sure you want to continue')+' ?'; 
-    context.winModalDisplay(winText,winTitle, false, context.gettext('Cancel'), context.gettext('Confirm'))
+    const params = {    
+        invoketype: 'box:confirmation',        
+        args: {
+            title: context.gettext('Cutting track confirmation'),
+            message: winText,
+            buttons: [context.gettext('Oui'), context.gettext('Non')],
+            defaultId: 0,
+            cancelId: 1
+        } 
+    }
+    const confirmationResult = await window.electronAPI.invoke(params);
+    if (confirmationResult.success && confirmationResult.response === 0) {
+        context.dispatchEvent(new CustomEvent('track-cut-confirmed', {
+        detail: { idx0, idx1 }
+    }));
+    } else {
+        console.log('User cancelled the cut action');
+    }    
 }

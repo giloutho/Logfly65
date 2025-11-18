@@ -143,7 +143,8 @@ class FullmapTrack extends HTMLElement {
             // if (this.fullmap) {
             //     this.fullmap.invalidateSize();
             // }
-        });        
+        });
+               
     }
 
     async initMap() {

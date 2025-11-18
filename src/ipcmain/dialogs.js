@@ -92,3 +92,18 @@ ipcMain.handle('box:error', async (event, args) => {
     dialog.showErrorBox(title || 'Error', message || 'An error has occurred.');
     return { success: true };
 });
+
+ipcMain.handle('box:confirmation', async (event, args) => {
+    const { title, message, buttons = ['Oui', 'Non'], defaultId = 0, cancelId = 1 } = args;
+    const result = await dialog.showMessageBox({
+        type: 'question',
+        title: title || 'Confirmation',
+        message: message || 'Voulez-vous continuer ?',
+        buttons,
+        defaultId,
+        cancelId,
+        noLink: true
+    });
+    return { success: true, response: result.response };
+});
+

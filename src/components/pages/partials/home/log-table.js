@@ -61,6 +61,7 @@ export class LogTable extends HTMLElement {
     document.addEventListener('glider-updated', this.handleGliderUpdated);   
     document.addEventListener('site-updated', this.handleSiteUpdated); 
     document.addEventListener('flight-deleted', this.handleFlightDeleted); 
+    document.addEventListener('track-cut-confirmed', this.handleCuttingTrack); 
     document.addEventListener('select-next-row', this.handleSelectNextRow);      
     document.addEventListener('select-prev-row', this.handleSelectPrevRow);        
   }
@@ -513,6 +514,15 @@ export class LogTable extends HTMLElement {
           }
         }
       }
+    }
+
+    handleCuttingTrack = async (event) => {
+      const { firstIdx, lastIdx } = event.detail;
+      console.log(`Log map Cutting track for ${firstIdx} to ${lastIdx}`);
+
+      // Implémenter la logique de découpage de la trace ici
+      // Après le découpage, recharger la table pour refléter les changements
+     // await this.dbTable();
     }
 
     async displayNoFlights() {

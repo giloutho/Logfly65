@@ -222,7 +222,7 @@ export class LogMap extends HTMLElement {
         document.getElementById('flyxc-btn').addEventListener('click', () => {
             const btn = document.getElementById('flyxc-btn');
             if (btn) btn.blur();
-            this.showDownloadInProgress()
+            this.debugCutting()
         });
 
         document.getElementById('analyze-btn').addEventListener('click', () => {
@@ -413,8 +413,62 @@ export class LogMap extends HTMLElement {
                     fullmapTrack.fullmap.invalidateSize();
                 }
             }
+            // Ajoute l'écouteur d'événement ici
+            fullmapTrack.addEventListener('track-cut-confirmed', (e) => {
+                const { idx0, idx1 } = e.detail;
+                console.log('Track cut confirmed received in log-map.js with idx0:', idx0, 'idx1:', idx1);
+              //  console.log('idxO:', this.dbFlight.V_Track.fixes[idx0])
+                // Object.entries(this.dbFlight.V_Track.fixes[idx0]).forEach(([key, value]) => {
+                //     console.log(key, value);
+                // });
+                //console.log('idx1:', this.dbFlight.V_Track.fixes[idx1].timestamp+' '+this.dbFlight.V_Track.fixes[idx1].lat+' '+this.dbFlight.V_Track.fixes[idx1].lng    );
+                // Relayer à log-table ou traiter ici
+                // const logTable = document.querySelector('log-table');
+                // if (logTable) {
+                //     logTable.dispatchEvent(new CustomEvent('track-cut-confirmed', { detail: { idx0, idx1 } }));
+                // }
+
+                // this.dispatchEvent(new CustomEvent('track-cut-confirmed', {
+                //     detail: {
+                //         firstIdx: idx0,
+                //         lastIdx : idx1
+                //     },
+                //     bubbles: true,
+                //     composed: true
+                // }));
+            });            
         }, 300); 
         } 
+    }
+
+    async debugCutting() {
+        console.log('Debugging cutting track...');
+        const firstIdx = 4512;
+        const lastIdx = 2328;
+        // dernier point Etang de la Toison
+     //  console.log('First idx:', fisrtIdx);
+        // Object.entries(this.dbFlight.V_Track.fixes[1000]).forEach(([key, value]) => {
+        //     console.log(key, value);
+        // });
+       // console.log(this.dbFlight.V_Track.igcData)
+        // const lines = this.dbFlight.igcData.split('\n').slice(0, 10);
+        // lines.forEach((line, idx) => {
+        //     console.log(`Ligne ${idx + 1}:`, line);
+        // });
+        const params = {
+            invoketype: 'igc:cutting',
+            args: {
+                oldTrack: this.dbFlight.V_Track,
+                firstIdx: firstIdx,
+                lastIdx: lastIdx
+            }
+        };
+        const cutResult = await window.electronAPI.invoke(params);
+        if (cutResult.success) {
+            console.log('Track cut réussi');
+        } else {
+            console.error('Erreur lors du découpage de la trace:', cutResult.message);
+        }      
     }
 
     async getIgcAnalyze() {

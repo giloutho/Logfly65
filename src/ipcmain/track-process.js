@@ -78,3 +78,23 @@ ipcMain.handle('igc:reading', async (event, args) => {
         return { success: false, message: error.message };
     }
 })
+
+ipcMain.handle('igc:cutting', async (event, args) => {
+    try {
+        const { oldTrack, firstIdx, lastIdx } = args;
+        console.log('Cutting track from index ', firstIdx, ' to index ', lastIdx);
+        // Verifier que fisrtIdx et lastIdx sont dans les bornes du tableau
+        if (firstIdx < 0 || lastIdx >= oldTrack.fixes.length || firstIdx > lastIdx) {
+            console.log('Invalid indices for cutting track');
+            throw new Error('Invalid indices for cutting track');
+        }
+        const newFixes = oldTrack.fixes.slice(firstIdx, lastIdx + 1);
+        const newTrack = { ...oldTrack, fixes: newFixes };
+        console.log('New track has ', newTrack.fixes.length, ' points');
+
+
+        return { success: true};
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+})
