@@ -17,7 +17,7 @@ const http = require('http');
 * Dans la fonction handle, il faut déstructurer args pour passer  
 * chaque propriété (comme filters, title, etc.) directement à showOpenDialog :
 */
-ipcMain.handle('dialog:openfile', async (event,args) => {
+ipcMain.handle('file:open', async (event,args) => {
     // On déstructure les propriétés attendues dans args
     const {
         title,
@@ -107,3 +107,21 @@ ipcMain.handle('box:confirmation', async (event, args) => {
     return { success: true, response: result.response };
 });
 
+ipcMain.handle('file:save', async (event, args) => {
+    const {
+        title,
+        message,
+        defaultFolder,
+        buttonLabel,
+        filters
+    } = args;
+    const defaultPath = path.join(app.getPath('documents'), defaultFolder);
+    const result = await dialog.showSaveDialog({
+        title,
+        message,
+        defaultPath,
+        buttonLabel,
+        filters
+    });
+    return result;
+});
