@@ -389,7 +389,7 @@ class SetGeneral extends HTMLElement {
   async selectLogbookCopy() {
       const chooseMsg = this.gettext('Choose an existing logbook');
       const params = {
-          invoketype: 'dialog:openfile',
+          invoketype: 'file:openfile',
           args: {
               title: chooseMsg,
               message : chooseMsg,

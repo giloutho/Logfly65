@@ -850,7 +850,7 @@ class FullmapTrack extends HTMLElement {
     async onCheckFileClicked() {
         const chooseMsg = this.gettext('Choose an openAir file');
         const paramsDialog = {
-            invoketype: 'dialog:openfile',
+            invoketype: 'file:openfile',
             args: {
                 title: chooseMsg,
                 message : chooseMsg,
