@@ -247,6 +247,7 @@ export function drawGraphCutting(context) {
 }
 
 async function plotCutMarkers(context, idx0, idx1) {
+    alert(context.gettext('Clic on Confirm to cut the track between the two markers.'));
     const fixes = context._flightData.V_Track.fixes;
     // from https://github.com/pointhi/leaflet-color-markers
     const purpleIcon = new L.Icon({
@@ -302,11 +303,23 @@ async function plotCutMarkers(context, idx0, idx1) {
     // Affiche le menu déroulant de confirmation
     const cutDropdownMenu = document.getElementById('cut-dropdown-menu');
     const cutDropdownBtn = document.getElementById('cut-dropdown-btn');
-    if (cutDropdownBtn && cutDropdownMenu) {
-        // Crée une instance Bootstrap Dropdown sur le bouton
-        const bsDropdown = window.bootstrap?.Dropdown.getOrCreateInstance(cutDropdownBtn);
-        bsDropdown.show();
-    }
+    setTimeout(() => {
+        if (cutDropdownBtn && cutDropdownMenu) {
+            // 1. On s'assure que le bouton est activé
+            cutDropdownBtn.disabled = false;
+            // 2. Méthode via l'API Bootstrap (recommandée)
+            if (window.bootstrap) {
+                console.log('Affichage du menu déroulant de découpe via Bootstrap');
+                const bsDropdown = window.bootstrap.Dropdown.getOrCreateInstance(cutDropdownBtn);
+                bsDropdown.show();
+            // 3. Fallback : Force l'affichage manuellement si l'API échoue        
+            } else {
+                cutDropdownMenu.classList.add('show');
+                cutDropdownBtn.classList.add('show');
+                cutDropdownBtn.setAttribute('aria-expanded', 'true');
+            }       
+        }
+    }, 300);
     // Désactive le bouton de démarrage de la sélection
     const startCutBtn = document.getElementById('start-cut-btn');
     if (startCutBtn) {
@@ -350,39 +363,5 @@ async function plotCutMarkers(context, idx0, idx1) {
             }
         };
     }    
-
-
-
-    //Alert(this.gettext('Clic on Confirm to cut the track between the two markers.'));
-
-    // // fenêtre confirmation
-    // // const winTitle = context.gettext('Cutting track confirmation');
-    // // let winText = context.gettext('The retained part will be between the two markers.')+'<br><br>'
-    // // winText += context.gettext('Are you sure you want to continue')+' ?'; 
-    // // context.winModalDisplay(winText,winTitle, false, context.gettext('Cancel'), context.gettext('Confirm'))
-    // let winText = context.gettext('The retained part will be between the two markers')+'\n\n'
-    // winText += context.gettext('Are you sure you want to continue')+' ?'; 
-    // const params = {    
-    //     invoketype: 'box:confirmation',        
-    //     args: {
-    //         title: context.gettext('Cutting track confirmation'),
-    //         message: winText,
-    //         buttons: [context.gettext('Oui'), context.gettext('Non')],
-    //         defaultId: 0,
-    //         cancelId: 1
-    //     } 
-    // }
-    // const confirmationResult = await window.electronAPI.invoke(params);
-    // if (confirmationResult.success && confirmationResult.response === 0) {
-    //         context.dispatchEvent(new CustomEvent('track-cut-confirmed', {
-    //         detail: { idx0, idx1 }
-    //     }));
-    //     // Fermer la fenêtre modale
-    //     console.log('on ferme la modale');
-    //     if (typeof context.closeWinModal === 'function') {
-    //         context.closeWinModal();
-    //     }        
-    // } else {
-    //     console.log('User cancelled the cut action');
-    // }    
+   // alert(context.gettext('Clic on Confirm to cut the track between the two markers.'));
 }

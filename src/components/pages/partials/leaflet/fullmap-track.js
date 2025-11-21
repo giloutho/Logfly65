@@ -519,7 +519,7 @@ class FullmapTrack extends HTMLElement {
                     </button>       
                     <div class="dropdown">
                         <button id="cut-dropdown-btn" class="btn btn-danger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Score
+                            Découpe
                         </button>
                         <div class="dropdown-menu p-3" id="cut-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
                             <!-- Le contenu sera injecté dynamiquement -->

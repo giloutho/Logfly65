@@ -222,7 +222,6 @@ export class LogMap extends HTMLElement {
         document.getElementById('flyxc-btn').addEventListener('click', () => {
             const btn = document.getElementById('flyxc-btn');
             if (btn) btn.blur();
-            this.debugCutting()
         });
 
         document.getElementById('analyze-btn').addEventListener('click', () => {
@@ -240,17 +239,6 @@ export class LogMap extends HTMLElement {
             ...event.detail.rowData
         };
         this.rowIndex = event.detail.rowIndex;   
-        //console.log(this.selectedRowData);               
-        //console.log(`Row index : ${this.selectedRowData.rowIndex} - Id_Vol: ${this.selectedRowData.V_ID} - Engin: ${this.selectedRowData.V_Engin} - Date: ${this.selectedRowData.Day} ${this.selectedRowData.Hour}`);
-
-        //  Déplacé dans la title-bar du log-details.js    
-        // this.flightLabel = rowData.Day+' '+rowData.V_Site+' '+rowData.Duree+' '+rowData.V_Engin;
-        // const overlay = this.querySelector('#map-overlay-label');
-        // if (overlay) overlay.textContent = this.flightLabel;
-
-        // const modalTitle = document.getElementById('fullmapModalLabel');
-        // if (modalTitle) modalTitle.textContent = this.flightLabel;
-
         this.dbFlight = event.detail.dbFlight;
         if (
             this.dbFlight &&
@@ -416,40 +404,14 @@ export class LogMap extends HTMLElement {
             // Ajoute l'écouteur d'événement ici
             fullmapTrack.addEventListener('track-cut-confirmed', (e) => {
                 const { idx0, idx1 } = e.detail;
-                console.log('Track cut confirmed received in log-map.js with idx0:', idx0, 'idx1:', idx1);
-              //  console.log('idxO:', this.dbFlight.V_Track.fixes[idx0])
-                // Object.entries(this.dbFlight.V_Track.fixes[idx0]).forEach(([key, value]) => {
-                //     console.log(key, value);
-                // });
-                //console.log('idx1:', this.dbFlight.V_Track.fixes[idx1].timestamp+' '+this.dbFlight.V_Track.fixes[idx1].lat+' '+this.dbFlight.V_Track.fixes[idx1].lng    );
-                // Relayer à log-table ou traiter ici
-                // const logTable = document.querySelector('log-table');
-                // if (logTable) {
-                //     logTable.dispatchEvent(new CustomEvent('track-cut-confirmed', { detail: { idx0, idx1 } }));
-                // }
-
-                // this.dispatchEvent(new CustomEvent('track-cut-confirmed', {
-                //     detail: {
-                //         firstIdx: idx0,
-                //         lastIdx : idx1
-                //     },
-                //     bubbles: true,
-                //     composed: true
-                // }));
+                this.finishCutting(idx0, idx1);
             });            
         }, 300); 
         } 
     }
 
-    async debugCutting() {
-        console.log('Debugging cutting track...');
-        const firstIdx = 0;
-        const lastIdx = 2328;        
-        // dernier point Etang de la Toison
-        console.log('selectedRowData ',this.selectedRowData);
-        // selectedRowData  Day: "24-09-2025", Duree: "03h31", Hour: "14:20", 
-        //                  Photo: null, V_Commentaire: null, V_Duree: 12676, 
-        //                  V_Engin: "Stratus GS7", V_ID: 1549, V_Site: "LA MADONE", V_Tag: null
+    async finishCutting(firstIdx, lastIdx) {
+        console.log('Finishing cutting track from index', firstIdx, 'to', lastIdx);
         const params = {
             invoketype: 'igc:cutting',
             args: {
@@ -461,31 +423,22 @@ export class LogMap extends HTMLElement {
         };
         const cutResult = await window.electronAPI.invoke(params);
         if (cutResult.success) {
-            console.log('Track cut réussi');
-            console.log(cutResult.igcContent.substring(0, 100));
+            this.dispatchEvent(new CustomEvent('track-cut-confirmed', {
+                detail: {
+                    rowIndex: this.selectedRowData.rowIndex,
+                    flightID: this.selectedRowData.V_ID,
+                    newIgc: cutResult.igcContent
+                },
+                bubbles: true,
+                composed: true
+            }));                       
         } else {
             console.error('Erreur lors du découpage de la trace:', cutResult.message);
+            return {
+                success: false,
+                message: cutResult.message
+            }
         }    
-        
-        // sauvegarde après traitement si success false on ne sauvegarde pas
-
-        // let stringIgc = this.dbFlight.V_Track.igcData
-        // const paramsSave = {
-        //     stringFile: stringIgc,
-        //     typeFile: 'igc', // ou 'igc', 'ozi', etc.
-        //     defPath: ''
-        // };
-
-        // const result = await window.electronAPI.invoke({
-        //     invoketype: 'file:savetext',
-        //     args: paramsSave
-        // });
-        // if (result.success) {
-        //     alert('Fichier sauvegardé : ' + result.filePath);
-        // } else {
-        //     alert('Erreur : ' + result.message);
-        // }
-
     }
 
     async getIgcAnalyze() {

@@ -11,8 +11,7 @@ const fs = require('node:fs');
 
 function IgcCutting(oldTrack, firstIdx, lastIdx, flightID) {
     const newFixes = oldTrack.fixes.slice(firstIdx, lastIdx + 1);
-    const newTrack = { ...oldTrack, fixes: newFixes };
-    console.log('After igcCutting new track has ' + newTrack.fixes.length +'/'+ oldTrack.fixes.length + ' points for flight ID ' + flightID);
+    const newTrack = { ...oldTrack, fixes: newFixes };   
 
     // Vérification avant de continuer
     if (!newTrack.fixes || newTrack.fixes.length < 10) {
@@ -25,7 +24,6 @@ function IgcCutting(oldTrack, firstIdx, lastIdx, flightID) {
     const records = recordLineEncoding(newTrack);
     const footer = fileFooterEncoding();
     const stringIgc = header + records + footer;
-    //console.log('IGC Content:', stringIgc.substring(0, 100) + '...');
 
         // On sauvegardera pour un trace externe
         // const outputPath = path.join(app.getPath('userData'), `flight_${flightID}_cut.igc`);
