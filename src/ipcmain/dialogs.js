@@ -5,6 +5,7 @@ const path = require('path');
 const { dialog } = require('electron');
 const https = require('https');
 const http = require('http');
+const { type } = require('os');
 
 
 /* 
@@ -107,21 +108,103 @@ ipcMain.handle('box:confirmation', async (event, args) => {
     return { success: true, response: result.response };
 });
 
-ipcMain.handle('file:save', async (event, args) => {
-    const {
-        title,
-        message,
-        defaultFolder,
-        buttonLabel,
-        filters
-    } = args;
-    const defaultPath = path.join(app.getPath('documents'), defaultFolder);
-    const result = await dialog.showSaveDialog({
-        title,
-        message,
-        defaultPath,
-        buttonLabel,
-        filters
-    });
-    return result;
+//  const exportResult = ipcRenderer.sendSync('save-wpt',oziText,'ozi',filePath)
+/*
+* Inspiré de la sauvegarde waypoints ds L6 process-main/files-utils/open-file.js
+* Sauvegarde de fichier texte (waypoints, etc.)
+* args : 
+        const paramsSave = {
+            stringFile: stringIgc,
+            typeFile: 'igc',        // ou 'igc', 'ozi', etc.
+            defPath: ''             // si null la fonction utilise le dossier Documents
+        };
+*
+* Appel : 
+        const result = await window.electronAPI.invoke({
+            invoketype: 'file:savetext',
+            args: paramsSave
+        });
+        if (result.success) {
+            alert('Fichier sauvegardé : ' + result.filePath);
+        } else {
+            alert('Erreur : ' + result.message);
+        }
+*/
+ipcMain.handle('file:savetext', async (event, args) => {
+    const { stringFile, typeFile, defPath } = args;
+    let dlgTitle = 'Export';
+    let dlgName;
+    let dlgExt;
+
+    switch (typeFile) {
+        case 'igc':
+            dlgTitle = 'Igc';
+            dlgName = 'Igc format';
+            dlgExt = 'igc';
+            break;
+        case 'ozi':
+            dlgTitle = 'Ozi';
+            dlgName = 'OZI format';
+            dlgExt = 'wpt';
+            break;
+        case 'cup':
+            dlgTitle = 'Cup';
+            dlgName = 'CUP format';
+            dlgExt = 'cup';
+            break;
+        case 'com':
+            dlgTitle = 'CompeGps';
+            dlgName = 'CompeGps format';
+            dlgExt = 'wpt';
+            break;
+        case 'gpx':
+            dlgTitle = 'Gpx';
+            dlgName = 'Gpx format';
+            dlgExt = 'gpx';
+            break;
+        case 'kml':
+            dlgTitle = 'Kml';
+            dlgName = 'Kml format';
+            dlgExt = 'kml';
+            break;
+        case 'xctsk':
+            dlgTitle = 'Xctsk';
+            dlgName = 'XCTrack format';
+            dlgExt = 'xctsk';
+            break;
+        case 'dump':
+            dlgTitle = 'GpsDump';
+            dlgName = 'GPSDump format';
+            dlgExt = 'wpt';
+            break;
+        default:
+            dlgName = 'Fichier';
+            dlgExt = 'txt';
+    }
+    // Si defPath est null ou vide, on utilise le dossier Documents
+    let finalPath = defPath;
+    if (!defPath) {
+        finalPath = path.join(app.getPath('documents'), `export.${dlgExt}`);
+    }
+    try {
+        const result = await dialog.showSaveDialog({
+            title: dlgTitle,
+            defaultPath: finalPath,
+            filters: [{
+                name: dlgName,
+                extensions: [dlgExt]
+            }]
+        });
+
+        const filename = result.filePath;
+        if (!filename) {
+            return { success: false, message: 'Error : the user clicked the btn but didn\'t create a file' };
+        }
+
+        await fs.promises.writeFile(filename, stringFile);
+        return { success: true, filePath: filename };
+    } catch (err) {
+        console.log(err);
+        return { success: false, message: 'Error : ' + err.message };
+    }
 });
