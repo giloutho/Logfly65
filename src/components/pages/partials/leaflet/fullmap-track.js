@@ -149,7 +149,7 @@ class FullmapTrack extends HTMLElement {
 
     async initMap() {
         await mapBasics.initMap.call(this);          
-        this.initFullmapModalHeader();
+        this.initHeader();
     }    
 
     async setDefaultLayer() {
@@ -316,10 +316,37 @@ class FullmapTrack extends HTMLElement {
             measureBtn.textContent = this.gettext('Measure');
         }   
 
-        const cuttingBtn = document.getElementById('cutting-btn');
-        if (cuttingBtn) {
-            cuttingBtn.textContent = this.gettext('Cutting');
-        }    
+        const cutBtn = document.getElementById('cut-dropdown-btn');
+        if (cutBtn) {
+            cutBtn.textContent = this.gettext('Cutting');
+        }
+        const cutDropdownMenu = document.getElementById('cut-dropdown-menu');
+        if (cutDropdownMenu) {
+            cutDropdownMenu.innerHTML =  this.generateCutMenu();
+            this._cuttingAction = false;          
+            const startCutBtn = cutDropdownMenu.querySelector('#start-cut-btn');
+            if (startCutBtn) {
+                startCutBtn.addEventListener('click', () => {
+                    if (this.fullmap) {
+                        console.log('Démarrage de l’action de découpe du tracé');
+                        if (!this._cuttingAction) {
+                            this._cuttingAction = true;
+                            this.cutoutTrack();
+                        } 
+                    }
+                });
+            }
+            const cancelCutBtn = cutDropdownMenu.querySelector('#cancel-cut-btn');
+            if (cancelCutBtn) {
+                cancelCutBtn.addEventListener('click', () => {
+                    if (this.fullmap && this._cuttingAction) {
+                        console.log('Annulation de l’action de découpe du tracé');
+                        this.cutoutCancel();
+                    }                     
+                });
+            }             
+
+        }   
     }
 
     generateInfoSections() {
@@ -331,6 +358,10 @@ class FullmapTrack extends HTMLElement {
     } 
     generateChronoSections() {
         return mapMenus.generateChronoSections(this.gettext.bind(this),this._flightAnalyze);
+    }
+
+    generateCutMenu() {
+        return mapMenus.generateCutMenu(this.gettext.bind(this));
     }
 
     displaySegment(coords) {
@@ -446,7 +477,7 @@ class FullmapTrack extends HTMLElement {
         this.fullmap.fitBounds(this._scoreLayer.getBounds());
     }
      
-    initFullmapModalHeader() {
+    initHeader() {
         const modalHeader = document.getElementById('fullmap-modal-header');
         if (modalHeader) {
             modalHeader.innerHTML = /*html */ `
@@ -485,10 +516,15 @@ class FullmapTrack extends HTMLElement {
                     </div>
                     <button id="measure-btn" class="btn btn-secondary btn-sm" type="button">
                         Mesureroi
-                    </button>      
-                    <button id="cutting-btn" class="btn btn-danger btn-sm" type="button">
-                        Découper
-                    </button>                            
+                    </button>       
+                    <div class="dropdown">
+                        <button id="cut-dropdown-btn" class="btn btn-danger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Score
+                        </button>
+                        <div class="dropdown-menu p-3" id="cut-dropdown-menu" style="max-width:500px; width:500px; font-size:0.75em;">
+                            <!-- Le contenu sera injecté dynamiquement -->
+                        </div>
+                    </div>                                              
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="modal-fullscreen-btn" title="Plein écran">
@@ -542,23 +578,6 @@ class FullmapTrack extends HTMLElement {
                 });
             }
 
-            const cuttingBtn = modalHeader.querySelector('#cutting-btn');
-            if (cuttingBtn) {
-                cuttingBtn.addEventListener('click', () => {
-                    if (this.fullmap) {
-                        if (!this._cuttingAction) {
-                            cuttingBtn.classList.add('btn-active');
-                            this._cuttingAction = true;
-                            this.cutoutTrack();
-                        } else {
-                            cuttingBtn.classList.remove('btn-active');
-                            this._cuttingAction = false;
-                            this.cutoutCancel();
-                        }
-                    }
-                });
-            }   
-
             const scoreBtn = modalHeader.querySelector('#score-dropdown-btn');
             const scoreDropdownMenu = modalHeader.querySelector('#score-dropdown-menu');
             this._scoreMenuState = 'menu'; // état initial
@@ -574,8 +593,7 @@ class FullmapTrack extends HTMLElement {
                     // Sinon, le comportement par défaut (affichage du menu)
                     // Rien à faire ici, le menu est déjà affiché
                 });
-            }            
-                        
+            }                                       
         }
     }
 
@@ -850,7 +868,7 @@ class FullmapTrack extends HTMLElement {
     async onCheckFileClicked() {
         const chooseMsg = this.gettext('Choose an openAir file');
         const paramsDialog = {
-            invoketype: 'file:openfile',
+            invoketype: 'file:open',
             args: {
                 title: chooseMsg,
                 message : chooseMsg,
@@ -902,22 +920,29 @@ class FullmapTrack extends HTMLElement {
             const airspacesBtn = document.getElementById('airspaces-dropdown-btn');
             const scoreBtn = document.getElementById('score-dropdown-btn');
             const measureBtn = document.getElementById('measure-btn');
-            const cuttingBtn = document.getElementById('cutting-btn');
 
             if (infoBtn) infoBtn.disabled = true;
             if (chronoBtn) chronoBtn.disabled = true;
             if (airspacesBtn) airspacesBtn.disabled = true;
             if (scoreBtn) scoreBtn.disabled = true;
-            if( measureBtn) measureBtn.disabled = true;
-            if (cuttingBtn) {
-                cuttingBtn.textContent = 'Annuler';
-            }            
+            if( measureBtn) measureBtn.disabled = true;        
             drawGraphCutting(this);
         }
     }
 
     cutoutCancel() {
         if (this.fullmap) {
+            this._cuttingAction = false;
+            // Réactive le bouton de démarrage
+            const startCutBtn = document.getElementById('start-cut-btn');
+            if (startCutBtn) {
+                startCutBtn.disabled = false;
+            }
+            // Désactive le bouton de confirmation
+            const confirmCutBtn = document.getElementById('confirm-cut-btn');
+            if (confirmCutBtn) {
+                confirmCutBtn.disabled = true;
+            }
             // Supprime les marqueurs de découpe s'ils existent
             if (this.startCutMarker) {
                 this.fullmap.removeLayer(this.startCutMarker);
@@ -936,19 +961,32 @@ class FullmapTrack extends HTMLElement {
             const chronoBtn = document.getElementById('chrono-dropdown-btn');
             const airspacesBtn = document.getElementById('airspaces-dropdown-btn');
             const scoreBtn = document.getElementById('score-dropdown-btn');
-            const measureBtn = document.getElementById('measure-btn');
-            const cuttingBtn = document.getElementById('cutting-btn');      
+            const measureBtn = document.getElementById('measure-btn');    
             if (infoBtn) infoBtn.disabled = false;
             if (chronoBtn) chronoBtn.disabled = false;
             if (airspacesBtn) airspacesBtn.disabled = false;
             if (scoreBtn) scoreBtn.disabled = false;
-            if( measureBtn) measureBtn.disabled = false;
-            if (cuttingBtn) {
-                cuttingBtn.textContent = this.gettext('Cutting');
-            }             
+            if( measureBtn) measureBtn.disabled = false;         
             drawGraphAlti(this);
         }
     }
+
+    closeWinModal() {
+        const modal = document.getElementById('fullmapModal');
+        if (modal) {
+            const bsModal = window.bootstrap?.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            } else {
+                modal.style.display = 'none';
+            }
+            // Supprime le backdrop Bootstrap si présent
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) backdrop.remove();
+            // Supprime la classe 'modal-open' du body
+            document.body.classList.remove('modal-open');
+        }
+    }    
 
     async winModalDisplay(winText, title, spinner, cancelText, textOK) {
         const spinnerDiv = '&nbsp;&nbsp;&nbsp;<span id="airsp-spinner" class="spinner-border text-danger" role="status"></span>';

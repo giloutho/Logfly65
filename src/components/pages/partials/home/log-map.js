@@ -443,32 +443,49 @@ export class LogMap extends HTMLElement {
 
     async debugCutting() {
         console.log('Debugging cutting track...');
-        const firstIdx = 4512;
-        const lastIdx = 2328;
+        const firstIdx = 0;
+        const lastIdx = 2328;        
         // dernier point Etang de la Toison
-     //  console.log('First idx:', fisrtIdx);
-        // Object.entries(this.dbFlight.V_Track.fixes[1000]).forEach(([key, value]) => {
-        //     console.log(key, value);
-        // });
-       // console.log(this.dbFlight.V_Track.igcData)
-        // const lines = this.dbFlight.igcData.split('\n').slice(0, 10);
-        // lines.forEach((line, idx) => {
-        //     console.log(`Ligne ${idx + 1}:`, line);
-        // });
+        console.log('selectedRowData ',this.selectedRowData);
+        // selectedRowData  Day: "24-09-2025", Duree: "03h31", Hour: "14:20", 
+        //                  Photo: null, V_Commentaire: null, V_Duree: 12676, 
+        //                  V_Engin: "Stratus GS7", V_ID: 1549, V_Site: "LA MADONE", V_Tag: null
         const params = {
             invoketype: 'igc:cutting',
             args: {
                 oldTrack: this.dbFlight.V_Track,
                 firstIdx: firstIdx,
-                lastIdx: lastIdx
+                lastIdx: lastIdx,
+                flightID: this.selectedRowData.V_ID
             }
         };
         const cutResult = await window.electronAPI.invoke(params);
         if (cutResult.success) {
             console.log('Track cut réussi');
+            console.log(cutResult.igcContent.substring(0, 100));
         } else {
             console.error('Erreur lors du découpage de la trace:', cutResult.message);
-        }      
+        }    
+        
+        // sauvegarde après traitement si success false on ne sauvegarde pas
+
+        // let stringIgc = this.dbFlight.V_Track.igcData
+        // const paramsSave = {
+        //     stringFile: stringIgc,
+        //     typeFile: 'igc', // ou 'igc', 'ozi', etc.
+        //     defPath: ''
+        // };
+
+        // const result = await window.electronAPI.invoke({
+        //     invoketype: 'file:savetext',
+        //     args: paramsSave
+        // });
+        // if (result.success) {
+        //     alert('Fichier sauvegardé : ' + result.filePath);
+        // } else {
+        //     alert('Erreur : ' + result.message);
+        // }
+
     }
 
     async getIgcAnalyze() {

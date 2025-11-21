@@ -435,6 +435,33 @@ export function generateChronoSections(gettext, flightAnalyze) {
     return htmlText;
 }
 
+export function generateCutMenu(gettext) {
+    return /*html */ `
+    <div style="max-width:400px;">
+        <div style="margin-bottom:10px; font-weight:bold; font-size:1.2em; background:#e3f2fd; border-radius:6px; padding:8px 12px; text-align:left;">
+            1️⃣ ${gettext('Select the area on the chart')}<br>
+            ➡️ ${gettext('Click to set the start point')}<br>
+            ➡️ ${gettext('Hold until you reach the last point')}<br>
+            <button id="start-cut-btn" class="btn btn-success btn-sm" type="button" style="margin-top:5px;margin-bottom:5px;text-align:center;">
+                ${gettext('Start selecting')}
+            </button>
+        </div>
+        <div style="margin-bottom:10px; font-weight:bold; font-size:1.2em; background:#e3f2fd; border-radius:6px; padding:8px 12px;text-align:left;">
+            2️⃣ ${gettext('Checking on the chart')}<br>
+            ➡️ ${gettext('Click to confirm cut')}<br>
+            <div style="margin-top:10px;margin-bottom:5px;text-align:center;">
+                <button id="cancel-cut-btn" class="btn btn-secondary btn-sm" type="button">
+                    ${gettext('Cancel')}
+                </button>
+                <button id="confirm-cut-btn" class="btn btn-danger btn-sm" type="button" style="margin-left:12px;" disabled>
+                    ${gettext('Confirm cut')}
+                </button>
+            </div>
+        </div>
+
+    </div>
+    `;
+}
 export function generateOpenAipFilter(gettext) {
     return /*html */ `
     <div style="max-width:600px;">

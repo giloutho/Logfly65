@@ -2,6 +2,7 @@ const {ipcMain} = require('electron');
 const fs = require('node:fs');
 const { IgcDecoding } = require('./igc-decoder.js');
 const { IgcAnalyze } = require('./igc-analyzer');
+const { IgcCutting } = require('./igc-cutting.js');
 const IgcScoring = require('./igc-scoring.js');
 const { getElevationData } = require('./srtm-access');
 
@@ -81,19 +82,14 @@ ipcMain.handle('igc:reading', async (event, args) => {
 
 ipcMain.handle('igc:cutting', async (event, args) => {
     try {
-        const { oldTrack, firstIdx, lastIdx } = args;
-        console.log('Cutting track from index ', firstIdx, ' to index ', lastIdx);
+        const { oldTrack, firstIdx, lastIdx, flightID } = args;
         // Verifier que fisrtIdx et lastIdx sont dans les bornes du tableau
         if (firstIdx < 0 || lastIdx >= oldTrack.fixes.length || firstIdx > lastIdx) {
-            console.log('Invalid indices for cutting track');
+            console.warn('Invalid indices for cutting track');
             throw new Error('Invalid indices for cutting track');
         }
-        const newFixes = oldTrack.fixes.slice(firstIdx, lastIdx + 1);
-        const newTrack = { ...oldTrack, fixes: newFixes };
-        console.log('New track has ', newTrack.fixes.length, ' points');
-
-
-        return { success: true};
+        const result = IgcCutting(oldTrack, firstIdx, lastIdx, flightID);
+        return { ...result};
     } catch (error) {
         return { success: false, message: error.message };
     }

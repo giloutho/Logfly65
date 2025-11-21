@@ -180,19 +180,28 @@ export function drawGraphCutting(context) {
                 setSelect: [
                     (u) => {
                         if (u.select.width > 0) {
-                            // Récupère les valeurs min et max de la sélection (timestamps)
-                            // convertit une position en pixels en valeur de données (timestamp).
-                            const minX = u.posToVal(u.select.left, "x");
-                            const maxX = u.posToVal(u.select.left + u.select.width, "x");
+                            // Sauvegarde la sélection
+                            const selectLeft = u.select.left;
+                            const selectWidth = u.select.width;
                             
-                            // Convertit une valeur de données en index du tableau.
+                            // Récupère les valeurs min et max de la sélection (timestamps)
+                            const minX = u.posToVal(selectLeft, "x");
+                            const maxX = u.posToVal(selectLeft + selectWidth, "x");
+                            
+                            // Convertit une valeur de données en index du tableau
                             const idx0 = u.valToIdx(minX);
                             let idx1 = u.valToIdx(maxX);
                             
                             // Correction : idx1 ne doit pas dépasser le dernier index
                             idx1 = Math.min(idx1, context._flightData.V_Track.fixes.length - 1);
                             
-                            plotCutMarkers(context, idx0, idx1);                
+                            plotCutMarkers(context, idx0, idx1);
+                            
+                            // // Réapplique la sélection pour qu'elle reste visible
+                            // setTimeout(() => {
+                            //     console.log('Réapplique la sélection sur le graphe :', { left: selectLeft, width: selectWidth });   
+                            //     u.setSelect({ left: selectLeft, width: selectWidth, show: true });
+                            // }, 0);             
                         }
                     }
                 ]
@@ -290,29 +299,90 @@ async function plotCutMarkers(context, idx0, idx1) {
         dashArray: '8,6'
     }).addTo(context.fullmap);
 
-    // fenêtre confirmation
-    // const winTitle = context.gettext('Cutting track confirmation');
-    // let winText = context.gettext('The retained part will be between the two markers.')+'<br><br>'
-    // winText += context.gettext('Are you sure you want to continue')+' ?'; 
-    // context.winModalDisplay(winText,winTitle, false, context.gettext('Cancel'), context.gettext('Confirm'))
-    let winText = context.gettext('The retained part will be between the two markers')+'\n\n'
-    winText += context.gettext('Are you sure you want to continue')+' ?'; 
-    const params = {    
-        invoketype: 'box:confirmation',        
-        args: {
-            title: context.gettext('Cutting track confirmation'),
-            message: winText,
-            buttons: [context.gettext('Oui'), context.gettext('Non')],
-            defaultId: 0,
-            cancelId: 1
-        } 
+    // Affiche le menu déroulant de confirmation
+    const cutDropdownMenu = document.getElementById('cut-dropdown-menu');
+    const cutDropdownBtn = document.getElementById('cut-dropdown-btn');
+    if (cutDropdownBtn && cutDropdownMenu) {
+        // Crée une instance Bootstrap Dropdown sur le bouton
+        const bsDropdown = window.bootstrap?.Dropdown.getOrCreateInstance(cutDropdownBtn);
+        bsDropdown.show();
     }
-    const confirmationResult = await window.electronAPI.invoke(params);
-    if (confirmationResult.success && confirmationResult.response === 0) {
-        context.dispatchEvent(new CustomEvent('track-cut-confirmed', {
-        detail: { idx0, idx1 }
-    }));
-    } else {
-        console.log('User cancelled the cut action');
+    // Désactive le bouton de démarrage de la sélection
+    const startCutBtn = document.getElementById('start-cut-btn');
+    if (startCutBtn) {
+        startCutBtn.disabled = true;
+    }
+    // Active le bouton de confirmation
+    const confirmCutBtn = document.getElementById('confirm-cut-btn');
+    if (confirmCutBtn) {
+        confirmCutBtn.disabled = false;
+        confirmCutBtn.onclick = async () => {
+            // Fenêtre de confirmation
+            let winText = context.gettext('The retained part will be between the two markers') + '\n\n';
+            winText += context.gettext('Are you sure you want to continue') + ' ?';
+            const params = {
+                invoketype: 'box:confirmation',
+                args: {
+                    title: context.gettext('Cutting track confirmation'),
+                    message: winText,
+                    buttons: [context.gettext('Oui'), context.gettext('Non')],
+                    defaultId: 0,
+                    cancelId: 1
+                }
+            };
+            const confirmationResult = await window.electronAPI.invoke(params);
+            if (confirmationResult.success && confirmationResult.response === 0) {
+                
+                // Fermer la fenêtre modale
+                if (typeof context.closeWinModal === 'function') {
+                    console.log('Fermeture de la modale après confirmation de la découpe');
+                    context.closeWinModal();
+                } 
+                // remettre à zéro les outils de découpe
+                if (typeof context.cutoutCancel === 'function') {
+                    context.cutoutCancel();
+                }
+                context.dispatchEvent(new CustomEvent('track-cut-confirmed', {
+                    detail: { idx0, idx1 }
+                }));
+            } else {
+                console.log('User cancelled the cut action');
+            }
+        };
     }    
+
+
+
+    //Alert(this.gettext('Clic on Confirm to cut the track between the two markers.'));
+
+    // // fenêtre confirmation
+    // // const winTitle = context.gettext('Cutting track confirmation');
+    // // let winText = context.gettext('The retained part will be between the two markers.')+'<br><br>'
+    // // winText += context.gettext('Are you sure you want to continue')+' ?'; 
+    // // context.winModalDisplay(winText,winTitle, false, context.gettext('Cancel'), context.gettext('Confirm'))
+    // let winText = context.gettext('The retained part will be between the two markers')+'\n\n'
+    // winText += context.gettext('Are you sure you want to continue')+' ?'; 
+    // const params = {    
+    //     invoketype: 'box:confirmation',        
+    //     args: {
+    //         title: context.gettext('Cutting track confirmation'),
+    //         message: winText,
+    //         buttons: [context.gettext('Oui'), context.gettext('Non')],
+    //         defaultId: 0,
+    //         cancelId: 1
+    //     } 
+    // }
+    // const confirmationResult = await window.electronAPI.invoke(params);
+    // if (confirmationResult.success && confirmationResult.response === 0) {
+    //         context.dispatchEvent(new CustomEvent('track-cut-confirmed', {
+    //         detail: { idx0, idx1 }
+    //     }));
+    //     // Fermer la fenêtre modale
+    //     console.log('on ferme la modale');
+    //     if (typeof context.closeWinModal === 'function') {
+    //         context.closeWinModal();
+    //     }        
+    // } else {
+    //     console.log('User cancelled the cut action');
+    // }    
 }
