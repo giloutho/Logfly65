@@ -47,7 +47,6 @@ export class LogTable extends HTMLElement {
                           <p id="winModalBody"></p>
                       </div>
                       <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${this.gettext('Cancel')}</button>
                           <button type="button" class="btn btn-primary" id="win-validate">${this.gettext('OK')}</button>                        
                       </div>
                   </div>
@@ -290,7 +289,7 @@ export class LogTable extends HTMLElement {
           // }
           return dbFlight
       } else {
-          this.displayModal(this.gettext('Decoding problem in track file'),resDb.message);
+          this.displayModal('error', this.gettext('Decoding problem in track file'),resDb.message);
       }
   }
 
@@ -507,22 +506,109 @@ export class LogTable extends HTMLElement {
                   this.dataTableInstance.row(':eq(0)').select();
                 }
               } else {
-                  this.displayModal(this.gettext('Database update failed'), result.message);
+                  this.displayModal('error', this.gettext('Database update failed'), result.message);
               }
           } catch (error) {
-              this.displayModal(this.gettext('Database update failed'), result.message);
+              this.displayModal('error', this.gettext('Database update failed'), result.message);
           }
         }
       }
     }
 
     handleCuttingTrack = async (event) => {
-      const { firstIdx, lastIdx } = event.detail;
-      console.log(`Log map Cutting track for ${firstIdx} to ${lastIdx}`);
+      const { rowIndex, flightID, newIgc } = event.detail;
+      console.log('Track cut réussi pour le vol ID : ' + flightID+' à la ligne index : '+rowIndex);
+    //  console.log(newIgc.substring(0, 100));
+      // Décodage la trace IGC raccourcie
+      const params = {
+          invoketype: 'igc:decoding',
+          args: {
+              strIgc : newIgc
+          }
+      }
+      const track = await window.electronAPI.invoke(params);                        
+      if (track.success) {
+          console.log(`Nouveau track décodé avec ${track.data.fixes.length} points.`);
+          const updateResult = await this.updateCuttingTrackInDb(flightID, track.data);
+          if (updateResult.success) {           
+              const rowData = this.dataTableInstance.row(rowIndex).data();
+              // Relecture de la trace pour mise à jour de la carte
+              const dbFlight = await this.readIgc(flightID, null);
+              this.dispatchEvent(new CustomEvent('row-selected', {
+                  detail: { rowIndex, rowData, dbFlight },
+                  bubbles: true,
+                  composed: true
+              }));              
+              this.displayModal('success', this.gettext('Successful operation'), this.gettext('The flight track has been successfully cut and updated in the logbook'));
+          } else {
+              this.displayModal('error', this.gettext('Logbook update failed'), updateResult.message);
+          }
+      } else {
+          this.displayModal('error', this.gettext('Decoding problem in track file'), track.message);
+      } 
+    }
 
-      // Implémenter la logique de découpage de la trace ici
-      // Après le découpage, recharger la table pour refléter les changements
-     // await this.dbTable();
+    async updateCuttingTrackInDb(flightID, track) {
+        console.log('Debugging updateCuttingTrackInDb...');
+        const dateObj = new Date(track.info.isodate);
+        const year = dateObj.getUTCFullYear();
+        const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getUTCDate()).padStart(2, '0');
+        let hours = String(dateObj.getUTCHours()).padStart(2, '0');
+        let minutes = String(dateObj.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(dateObj.getUTCSeconds()).padStart(2, '0');
+        const pDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`; // "2022-03-22 15:59:29"
+        const tableDate = `${day}-${month}-${year}`;
+        const tableTime = `${hours}:${minutes}`;
+        console.log('Flight date (UTC):', pDate);
+        let totalSeconds = track.stat.duration
+        hours = Math.floor(totalSeconds / 3600)
+        totalSeconds %= 3600
+        minutes = Math.floor(totalSeconds / 60)
+        const pSduree = String(hours).padStart(2, "0")+'h'+String(minutes).padStart(2, "0")+'mn' // V_sDuree
+        console.log('Flight duration V_Duree : ',track.stat.duration,' V_sDuree :', pSduree);
+        const pLatDeco = track.fixes[0].latitude;  // V_LatDeco 
+        const pLongDeco = track.fixes[0].longitude;  // V_LongDeco
+        const pAltDeco = track.fixes[0].gpsAltitude;  // V_AltDeco
+        console.log('Takeoff position :', pLatDeco, pLongDeco, pAltDeco);
+        const pUTC = track.info.offsetUTC
+        console.log(pUTC)      
+        console.log(track.igcData.substring(0, 100));
+        const params = {
+            invoketype: 'db:update',
+            args: {
+                sqltable: 'Vol',
+                sqlparams: {
+                    V_Date : pDate, 
+                    V_Duree : totalSeconds, 
+                    V_sDuree : pSduree, 
+                    V_LatDeco : pLatDeco, 
+                    V_LongDeco : pLongDeco, 
+                    V_AltDeco : pAltDeco,
+                    V_IGC: track.igcData
+                },
+                sqlwhere: {
+                    V_ID: flightID
+                }
+            }
+        };
+        const result = await window.electronAPI.invoke(params);
+        if (result.success) {
+            console.log('Database updated successfully for flight ID:', flightID);
+          // Met à jour la cellule dans la table affichée
+          const rowIdx = this.dataTableInstance.row(function(idx, data) {
+                                                      return data.V_ID === flightID;
+                                                    }).index();
+          if (rowIdx !== undefined) {
+                this.dataTableInstance.cell({row: rowIdx, column: 2}).data(tableDate);
+                this.dataTableInstance.cell({row: rowIdx, column: 3}).data(tableTime);
+                this.dataTableInstance.cell({row: rowIdx, column: 4}).data(pSduree);
+          }
+          return { success: true, rowIdx };
+        } else {
+            console.error('Error updating database for flight ID:', flightID, result.message);
+            return { success: false, message: result.message };
+        }
     }
 
     async displayNoFlights() {
@@ -540,12 +626,18 @@ export class LogTable extends HTMLElement {
       this.dispatchEvent(new CustomEvent('no-flights', { detail: { panelMsg, mapMsg, defLat, defLong }, bubbles: true, composed: true }));
     }
     
-    displayModal(title, body) {
+    displayModal(typeTitle, title, body) {
         const modal = this.querySelector('#winModal');
         const modalTitle = modal.querySelector('#winModalLabel');
         const modalBody = modal.querySelector('#winModalBody');
-        modalTitle.textContent = title;
-        modalBody.innerHTML = body;
+        // Choix de la couleur selon typeTitle
+        let color = '#1976d2'; // bleu par défaut
+        if (typeTitle === 'success') color = '#388e3c'; // vert
+        if (typeTitle === 'error') color = '#d32f2f';   // rouge
+        // Met en valeur le titre
+        modalTitle.innerHTML = `<span style="font-weight:bold; color:${color}; font-size:1.1em;">${title}</span>`;
+        // Affiche le body en caractères plus gros avec un margin top
+        modalBody.innerHTML = `<span style="font-size:1.25em; margin-top:10px; margin-left:10px; display:block;">${body}</span>`;
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
         const validateBtn = modal.querySelector('#win-validate');
