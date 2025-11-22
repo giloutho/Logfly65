@@ -11,7 +11,7 @@ function openDatabase(dbname) {
         throw new Error('Database file does not exist');
     }
     db = new DatabaseSync(dbPath);
-    console.log('Database opened at', dbPath);
+   // console.log('Database opened at', dbPath);
     return db;
 }
 

@@ -34,11 +34,11 @@ async function checkSettings (store, langjson) {
 
 async function checkCurrentDb(store) {
     const recDbName = store.get('dbName')
-    console.log('checkCurrentDb for : ', recDbName)
+   // console.log('checkCurrentDb for : ', recDbName)
     if (recDbName != undefined && recDbName != null && recDbName != '') {
         const dbResult = await checkDbFile(recDbName, store)
         if (dbResult.success) {
-            console.log('checkCurrentDb : ', dbResult.tableCount,' tables found in Db : ', recDbName)
+        //    console.log('checkCurrentDb : ', dbResult.tableCount,' tables found in Db : ', recDbName)
         } else {
             log.error('checkCurrentDb not good with Db : ', recDbName)
             const { tableCount, msgTables, maxVDate, msgVDate, V_Tag_Exists, msgTag, globalError } = dbResult
@@ -123,7 +123,7 @@ async function checkDbFile(dbName, store) {
         const dbPath = path.join(app.getPath('userData'), dbName);
         if (fs.existsSync(dbPath)) {
             // ouverture de la BDD
-            console.log('Database file exists at '+dbPath)
+          //  console.log('Database file exists at '+dbPath)
             const dbResult = dbCore.testDb(dbName)
             return dbResult
         } else {
