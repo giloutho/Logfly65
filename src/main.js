@@ -45,7 +45,7 @@ const createWindow = async () => {
   loadMainProcesses()
   loadLanguage();
   const startOk = await settings.checkSettings(store, langjson)
-  console.log('Settings check result : ', startOk)
+  //console.log('Settings check result : ', startOk)
 };
 
 // This method will be called when Electron has finished
