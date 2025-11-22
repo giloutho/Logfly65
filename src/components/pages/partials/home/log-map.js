@@ -222,12 +222,14 @@ export class LogMap extends HTMLElement {
         document.getElementById('flyxc-btn').addEventListener('click', () => {
             const btn = document.getElementById('flyxc-btn');
             if (btn) btn.blur();
+            this.displayFlyXc();
         });
 
         document.getElementById('analyze-btn').addEventListener('click', () => {
             const btn = document.getElementById('analyze-btn');
             if (btn) btn.blur();
-            this.restoreOverlayLabel()
+            const waitingMsg = this.gettext('Downloading the track')
+            this.showDownloadInProgress(waitingMsg);
         }); 
     }  
     
@@ -366,6 +368,38 @@ export class LogMap extends HTMLElement {
         } 
     }   
 
+    async displayFlyXc() {
+        if (
+            this.dbFlight.V_Track &&
+            this.dbFlight.V_Track.fixes.length > 0
+        ) {
+            const waitingMsg = this.gettext('Downloading the track')
+            this.showDownloadInProgress(waitingMsg);
+            const params = {
+                invoketype: 'igc:uploading',
+                args: {
+                    igcText: this.dbFlight.V_Track.igcData,
+                }
+            };
+            const uploadResult = await window.electronAPI.invoke(params);
+            this.cancelDownloadInProgress();
+            if (uploadResult.success) {
+                const flyxcUrl = uploadResult.fullUrl;
+                window.open(flyxcUrl, '_blank', 'fullscreen=yes,scrollbars=yes,resizable=yes');
+            } else {
+                console.error('Erreur lors de l\'upload IGC pour FlyXC :', uploadResult.message);
+                const errTitle = this.gettext('Communication error')
+                const errMsg = this.gettext('An error occurred during the transfer')+'<br>'+uploadResult.message
+                this.displayModalMessage('error', errTitle, errMsg);
+            }
+        } else {
+            console.warn('Nombre de fixes insuffisant pour FlyXC'); 
+            const errTitle = this.gettext('Invalid Track')
+            const errMsg = this.gettext('Decoding problem')+' ?'
+            this.displayModalMessage('error', errTitle, errMsg);        
+        }
+    }
+
     async openFullMapModal() {
         if (
             this.dbFlight &&
@@ -379,10 +413,16 @@ export class LogMap extends HTMLElement {
                 analyzeResult.anaTrack.elevations = elevationData.elevations;                
             } else {
                 console.warn('Échec de la récupération des données d\'élévation :', elevationData ? elevationData.message : 'Erreur inconnue');
+                const errTitle = this.gettext('Communication error')
+                const errMsg = this.gettext('Error downloading elevation files')+'<br>'+ (elevationData ? elevationData.message : this.gettext('Unknown error'));
+                this.displayModalMessage('error', errTitle, errMsg);
              }
         } else {
             // Analyse échouée
             console.warn('Analyse IGC échouée :', analyzeResult ? analyzeResult.message : 'Erreur inconnue');
+            const errTitle = this.gettext('Track analysis error')
+            const errMsg = analyzeResult ? analyzeResult.message : this.gettext('Unknown error');
+            this.displayModalMessage('error', errTitle, errMsg);
         }
         // Affiche la modale
         const modal = new bootstrap.Modal(document.getElementById('fullmapModal'));
@@ -459,7 +499,8 @@ export class LogMap extends HTMLElement {
     }
 
     async askElevationData() {
-        this.showDownloadInProgress();
+        const waitingMsg = 'Downloading digital elevation data';
+        this.showDownloadInProgress(waitingMsg);
         const params = {
             invoketype: 'igc:elevation-data',
             args: {
@@ -467,7 +508,7 @@ export class LogMap extends HTMLElement {
             }
         }
         const resElevation = await window.electronAPI.invoke(params);
-        this.restoreOverlayLabel();
+        this.cancelDownloadInProgress;
         if (resElevation.success) {
             return {                
                 success: true,
@@ -477,22 +518,23 @@ export class LogMap extends HTMLElement {
         return {    success: false, message: 'Failed to get elevation data' };
     }   
 
-    showDownloadInProgress() {
+    showDownloadInProgress(waitingMsg) {
         const overlay = this.querySelector('#map-overlay-label');
         if (overlay) {
-            const waitingMsg = 'Downloading digital elevation data...';
-            overlay.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${waitingMsg}`;
+            overlay.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${waitingMsg} ...`;
             overlay.style.background = '#d32f2f'; 
+            overlay.style.color = '#fff'; 
         }
     }
 
-    restoreOverlayLabel() {
+    cancelDownloadInProgress() {
         const overlay = this.querySelector('#map-overlay-label');
         if (overlay) {
-            overlay.textContent = this.flightLabel;
-            overlay.style.background = '#1a6dcc'; // couleur d'origine
+            overlay.innerHTML = '';
+            overlay.style.background = '';
+            overlay.style.color = '';
         }
-    }    
+    }
     
     destroyTooltips() {
     const tooltips = this.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -516,6 +558,13 @@ export class LogMap extends HTMLElement {
         popoverTriggerList.forEach(function (popoverTriggerEl) {
             new bootstrap.Popover(popoverTriggerEl);
         });
+    }
+
+    displayModalMessage(type, title, message) {
+        const logTable = document.querySelector('log-table');
+        if (logTable) {
+            logTable.displayModal(type, title, message);
+        }
     }
 
     setI18n(i18n) {

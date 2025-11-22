@@ -1,9 +1,11 @@
 const {ipcMain} = require('electron');
 const fs = require('node:fs');
+const Store = require('electron-store').default;
 const { IgcDecoding } = require('./igc-decoder.js');
 const { IgcAnalyze } = require('./igc-analyzer');
 const { IgcCutting } = require('./igc-cutting.js');
 const IgcScoring = require('./igc-scoring.js');
+const { uploadIgcToServer } = require('./igc-upload.js');
 const { getElevationData } = require('./srtm-access');
 
 ipcMain.handle('igc:decoding', async (event, args) => {
@@ -94,3 +96,25 @@ ipcMain.handle('igc:cutting', async (event, args) => {
         return { success: false, message: error.message };
     }
 })
+
+ipcMain.handle('igc:uploading', async (event, args) => {
+    try {
+        const { igcText } = args;        
+        const result = await uploadIgcToServer(igcText);        
+        if (result.success) {
+            const igcFileUrl = result.filename.replace(/^\D+/g, ''); // retire 'OK:'
+            console.log('Nom fichier reçu :' + result.filename + ' -> ' + igcFileUrl);
+            const store = new Store();
+            // urlvisu = url site FlyXC
+            // urllogflyigc = path des igc sur logfly.org
+            const srcPath = store.get('urlvisu') + store.get('urllogflyigc') + igcFileUrl;
+            return { success: true, fullUrl: srcPath };
+        } else {
+            console.error('Erreur upload :', result.message);
+            return { success: false, message: result.message || 'Erreur inconnue' };
+        }
+    } catch (error) {
+        console.error('Exception dans igc:uploading:', error);
+        return { success: false, message: error.message };
+    }
+});
