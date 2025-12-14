@@ -1,5 +1,6 @@
 import "./log-gliders.js"
 import "./log-sites.js"
+import "./log-photo.js"
 
 class LogDetails extends HTMLElement {
 
@@ -53,6 +54,7 @@ class LogDetails extends HTMLElement {
       </style>   
       <log-gliders></log-gliders> 
       <log-sites></log-sites>  
+      <log-photo></log-photo>
       <div class="card h-100">
         <div class="card-header">
            <div class="title-bar" id="title-bar">Détail du vol</div>          
@@ -120,8 +122,8 @@ class LogDetails extends HTMLElement {
                 <button id="score-calc-btn" class="btn btn-sm btn-outline-success ms-2">${this.gettext('Compute')}</button>
               </span>
             </div>
-            <button class="btn btn-sm btn-outline-primary me-2">${this.gettext('Add photo')}</button>
-            <button class="btn btn-sm btn-outline-danger">${this.gettext('Remove photo')}</button>
+            <button class="btn btn-sm btn-outline-primary me-2" id="add-photo-btn">${this.gettext('Add photo')}</button>
+            <button class="btn btn-sm btn-outline-danger" id="remove-photo-btn">${this.gettext('Remove photo')}</button>
           </div>
           
           <!-- Onglet Commentaire -->
@@ -224,6 +226,13 @@ class LogDetails extends HTMLElement {
             this.deleteFlight(this.rowData.V_ID);
           });
         }
+
+        const addPhotoBtn = this.querySelector('#add-photo-btn');
+        if (addPhotoBtn) {
+            addPhotoBtn.addEventListener('click', () => {
+                this.addPhoto();
+            }); 
+        }    
     }
 
     updateDetails(dbFlight) {
@@ -316,6 +325,31 @@ class LogDetails extends HTMLElement {
             }));       
         } 
     }    
+
+    async addPhoto() {
+      const rowData = this.rowData;
+       if (rowData && rowData.Photo === 'Yes') {
+          let winText = this.gettext('Photo already present') + '\n\n';
+          winText += this.gettext('Are you sure you want to replace') + ' ?';
+          const params = {
+              invoketype: 'box:confirmation',
+              args: {
+                  title: this.gettext('Replace a photo'),
+                  message: winText,
+                  buttons: [this.gettext('Oui'), this.gettext('Non')],
+                  defaultId: 0,
+                  cancelId: 1
+              }
+          };
+          const confirmationResult = await window.electronAPI.invoke(params);
+          if (confirmationResult.success && confirmationResult.response === 0) {
+            alert('Remplacer la photo');
+          }
+       } else {
+          const logPhoto = this.querySelector('log-photo');
+          if (logPhoto) logPhoto.open(this.rowData.V_ID, this.rowIndex);          
+       }
+    }
 
     setI18n(i18n) {
       this.i18n = i18n;

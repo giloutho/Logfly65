@@ -51,7 +51,18 @@ export class LogTable extends HTMLElement {
                       </div>
                   </div>
               </div>
-          </div>                
+          </div>  
+          <!-- ajoute une modale dédiée à l'affichage photo  -->
+          <div class="modal fade" id="photoModal" tabindex="-1" data-bs-backdrop="true">
+            <div class="modal-dialog" style="max-width:none; margin:0;">
+              <div class="modal-content" style="background:transparent !important; border:none !important; box-shadow:none !important;">
+                <div class="modal-body" style="padding:0 !important; background:transparent !important;">
+                  <img id="photoModalImg" src="" style="display:block; border-radius:8px;" />
+                </div>
+                <button type="button" class="btn-close btn-close-white position-absolute" style="top:10px; right:10px; z-index:1060;" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+            </div>
+          </div>           
     `;
   }
 
@@ -59,6 +70,7 @@ export class LogTable extends HTMLElement {
     document.addEventListener('com-updated', this.handleComUpdated);        
     document.addEventListener('glider-updated', this.handleGliderUpdated);   
     document.addEventListener('site-updated', this.handleSiteUpdated); 
+    document.addEventListener('photo-selected', this.handlePhotoSelected);
     document.addEventListener('flight-deleted', this.handleFlightDeleted); 
     document.addEventListener('track-cut-confirmed', this.handleCuttingTrack); 
     document.addEventListener('select-next-row', this.handleSelectNextRow);      
@@ -160,7 +172,7 @@ export class LogTable extends HTMLElement {
         { title: 'Seconds', data: 'V_Duree' }
       ],
       columnDefs: [
-        { "width": "4%", "targets": 0, "bSortable": false },
+        { "width": "7%", "targets": 0, "bSortable": false },
         { "width": "2%", "targets": 1, "bSortable": false },
         { "width": "17%", "targets": 2 },
         { "width": "7%", "targets": 3 },
@@ -199,7 +211,7 @@ export class LogTable extends HTMLElement {
     this.dataTableInstance.on('select', async (e, dt, type, indexes) => {
       if (type === 'row') {
         let countRows = this.dataTableInstance.rows({ selected: true }).count();
-       // console.log('Selected rows count: ' + countRows);
+        // console.log('Selected rows count: ' + countRows);
         const rowData = dt.row(indexes).data();
         const rowIndex = indexes;
         const dbFlight = await this.readIgc(rowData.V_ID, rowData.V_Engin);
@@ -208,9 +220,65 @@ export class LogTable extends HTMLElement {
           bubbles: true,
           composed: true
         }));
+        // Affichage auto 
+        // Pose problème si on clique sur l'icône photo
+        // il y aura deux affichages de la photo
+        // Pour l'instant plus d'affichaage auto
+        // const isPhoto = dt.row(indexes).data().Photo
+        // if (isPhoto === 'Yes') {  
+        //   console.log('Photos for flight Id: ' + rowData.V_ID);
+        //   this.displayPhoto(rowData.V_ID);
+        //   // this.dispatchEvent(new CustomEvent('show-photos', {   
+        //   //   detail: { flightId: rowData.V_ID },
+        //   // }));
+        //   } 
       }
     });
     this.dataTableInstance.row(':eq(0)').select();
+
+    // *** To select the first row at each page change ***
+    // Ce code qui provenait de L6 ne fonctionne pas. Pas d'erreur
+    //  mais la première ligne de la nouvelle page n'est pas sélectionnée
+    // this.dataTableInstance.on( 'page.dt', () => {
+    //   const info = this.dataTableInstance.page.info()
+    //   console.log( 'Showing page: '+info.page+' of '+info.pages )
+    //   this.dataTableInstance.row(':eq(0)', { page: 'current' }).select()
+    // })
+    //Le problème vient du timing de sélection de la première ligne après un changement de page.
+    // L’événement 'page.dt' est déclenché avant que la nouvelle page soit complètement affichée, 
+    // donc la sélection ne s’applique pas toujours correctement.
+    // l’événement 'draw' est déclenché APRES le rendu de la nouvelle page.
+    this.dataTableInstance.on('draw', () => {
+      // Désélectionne toutes les lignes
+      this.dataTableInstance.rows().deselect();
+      // Sélectionne la première ligne de la page courante
+      this.dataTableInstance.row(':eq(0)', { page: 'current' }).select();
+    });
+
+    // // Click on the first column dedicated to the management of the photo of the day
+    // this.dataTableInstance.on('click', 'tbody td:first-child', () => {  
+    //   let data = table.row( $(this).parents('tr') ).data()
+    //   let rowIndex = $(this).parents('tr').index()
+    //   if (data['Photo']=== 'Yes') this.displayPhoto(data['V_ID'])
+    // })
+
+    const tableEl = this.querySelector('#table_id');
+    tableEl.addEventListener('click', (event) => {
+        const cell = event.target.closest('td');
+        if (!cell) return;
+        // Vérifie si c'est la première colonne
+        if (cell.cellIndex === 0) {
+            event.stopPropagation(); // Empêche la désélection
+            const row = cell.parentElement;
+            // Utilise DataTables pour récupérer la ligne à partir de l'élément DOM
+            const rowData = this.dataTableInstance.row(row).data();
+            if (rowData && rowData.Photo === 'Yes') {
+                this.displayPhoto(rowData.V_ID);
+                // Sélectionne la ligne si elle ne l'est pas déjà
+                this.dataTableInstance.row(row).select();
+            }
+        }
+    });
   }
 
     handleSelectNextRow = () => {
@@ -480,7 +548,39 @@ export class LogTable extends HTMLElement {
               console.error('Error during flight update ' + error);
           }
       }
-    }           
+    }         
+    
+    handlePhotoSelected = async (event) => {
+      // Récupère le buffer base64 et le nom du fichier
+        const { base64, flightId, rowIndex } = event.detail;
+        // Pour obtenir un buffer binaire à partir du base64 :
+        const base64Data = base64.split(',')[1]; // retire le préfixe data:image/jpeg;base64,
+        const photoBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        // Utilise photoBuffer pour l'enregistrement en base
+        console.log('Photo buffer:', photoBuffer);
+        console.log('flight Id: ' + flightId + ' rowIndex: ' + rowIndex);
+        const reqSQL = `UPDATE Vol SET V_Photos= '${base64Data}' WHERE V_ID = ${flightId}`;
+        try {
+            const params = {
+                invoketype: 'db:query',
+                args: { sqlquery: reqSQL }
+            };
+            const resDb = await window.electronAPI.invoke(params);
+            if (resDb.success) {   
+              console.log('Photo enregistrée en base pour le vol Id: ' + flightId);
+              // Met à jour la cellule dans la table affichée
+              if (this.dataTableInstance && typeof rowIndex !== 'undefined') {
+                const rowData = this.dataTableInstance.row(rowIndex).data();
+                rowData.Photo = 'Yes';
+                this.dataTableInstance.row(rowIndex).data(rowData).draw(false);
+              }
+            } else {
+                console.error(`\n-> Erreur requête : ${resDb.message}`);
+            }
+        } catch (err) {
+            console.error('Erreur lors de l\'exécution de la requête:', err);
+        }
+    }    
 
     handleFlightDeleted = async (event) => {
       const { rowIndex,V_ID } = event.detail;
@@ -609,6 +709,97 @@ export class LogTable extends HTMLElement {
             console.error('Error updating database for flight ID:', flightID, result.message);
             return { success: false, message: result.message };
         }
+    }
+
+    async displayPhoto(flightId) {
+      const reqSQL = `SELECT V_Photos FROM Vol WHERE V_ID = ${flightId}`;
+      try {
+          const params = {
+              invoketype: 'db:query',
+              args: { sqlquery: reqSQL }
+          };
+          const resDb = await window.electronAPI.invoke(params);
+          if (resDb.success) {   
+            if (resDb.result.length > 0) {
+              const strImage = resDb.result[0].V_Photos;
+              // Utilise le bon type MIME selon ton stockage (ici png ou jpg)
+              const src = 'data:image/jpeg;base64,' + strImage;
+
+              // Charge l'image dans la modale Bootstrap dédiée
+              const photoModal = this.querySelector('#photoModal');
+              const photoModalImg = this.querySelector('#photoModalImg');
+              if (photoModal && photoModalImg) {
+                photoModalImg.onload = function() {
+                    const imgWidth = photoModalImg.naturalWidth;
+                    const imgHeight = photoModalImg.naturalHeight;
+                    
+                    const maxWidth = window.innerWidth * 0.95;
+                    const maxHeight = window.innerHeight * 0.95;
+                    
+                    let finalWidth = imgWidth;
+                    let finalHeight = imgHeight;
+                    
+                    if (finalWidth > maxWidth) {
+                        finalHeight = (maxWidth / finalWidth) * finalHeight;
+                        finalWidth = maxWidth;
+                    }
+                    if (finalHeight > maxHeight) {
+                        finalWidth = (maxHeight / finalHeight) * finalWidth;
+                        finalHeight = maxHeight;
+                    }
+                    
+                    const dialog = photoModal.querySelector('.modal-dialog');
+                    const content = photoModal.querySelector('.modal-content');
+                    const body = photoModal.querySelector('.modal-body');
+                    
+                    if (dialog && content && body) {
+                        // Centre la modale et ajuste sa taille
+                        dialog.style.position = 'fixed';
+                        dialog.style.top = '50%';
+                        dialog.style.left = '50%';
+                        dialog.style.transform = 'translate(-50%, -50%)';
+                        dialog.style.width = finalWidth + 'px';
+                        dialog.style.height = finalHeight + 'px';
+                        dialog.style.maxWidth = 'none';
+                        dialog.style.margin = '0';
+                        
+                        content.style.width = finalWidth + 'px';
+                        content.style.height = finalHeight + 'px';
+                        content.style.background = 'transparent';
+                        content.style.border = 'none';
+                        content.style.boxShadow = 'none';
+                        
+                        body.style.padding = '0';
+                        body.style.width = finalWidth + 'px';
+                        body.style.height = finalHeight + 'px';
+                        body.style.background = 'transparent';
+                        
+                        photoModalImg.style.width = finalWidth + 'px';
+                        photoModalImg.style.height = finalHeight + 'px';
+                        photoModalImg.style.objectFit = 'contain';
+                        photoModalImg.style.display = 'block';
+                    }
+                    
+                    // Rend le backdrop semi-transparent (fond sombre autour de l'image)
+                    setTimeout(() => {
+                        const backdrop = document.querySelector('.modal-backdrop');
+                        if (backdrop) {
+                            backdrop.style.backgroundColor = 'rgba(0,0,0,0.1)';                       
+                        }
+                    }, 50);
+                };
+                photoModalImg.src = src;
+                // Affiche la modale Bootstrap
+                const bsModal = window.bootstrap.Modal.getOrCreateInstance(photoModal);
+                bsModal.show();
+                        }
+            }
+          } else {
+              console.error(`\n-> Erreur requête : ${resDb.message}`);
+          }
+      } catch (err) {
+          console.error('Erreur lors de l\'exécution de la requête:', err);
+      }
     }
 
     async displayNoFlights() {
