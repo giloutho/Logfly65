@@ -603,13 +603,16 @@ class FullmapTrack extends HTMLElement {
         .map(cb => cb.value)
         // 'SUA' Special Use Airspace with id 8 is always added
         bloc1Checkboxes.push('8')
+        console.log('Classes sélectionnées :', bloc1Checkboxes);
 
         const bloc2Checkboxes = Array.from(document.querySelectorAll('#cbPro, #cbRes, #cbDan, #cbCtr, #cbTma, #cbRmz, #cbTmz, #cbGli, #cbOth'))
         .filter(cb => cb.checked)
         .map(cb => cb.value)
+        console.log('Types sélectionnés :', bloc2Checkboxes);
 
         const checkedRadios = Array.from(document.querySelectorAll('input[type="radio"]:checked'))
         const radioValues = checkedRadios.map(rd => rd.value)
+        console.log('Valeurs des radios :', radioValues);
 
         const values = {
             classes : bloc1Checkboxes,
